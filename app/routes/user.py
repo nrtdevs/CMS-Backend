@@ -2,16 +2,25 @@ from flask import Blueprint, request, jsonify
 from app.models.user import User, db
 from sqlalchemy.exc import IntegrityError
 from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SubmitField
-from wtforms.validators import DataRequired, Length, NumberRange
+from wtforms import StringField, IntegerField, SubmitField, PasswordField
+from wtforms.validators import DataRequired, Length, NumberRange, Email
 from flask import Flask
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for Flask-WTF CSRF protection
 
 class RegisterForm(FlaskForm):
-    username = StringField('username', validators=[DataRequired(), Length(min=2, max=50)])
-    email = StringField('email', validators=[DataRequired(), Length(min=2, max=50)])
+    firstName = StringField('firstName', validators=[DataRequired(), Length(min=2, max=50)])
+    lastName = StringField('lastName', validators=[DataRequired(), Length(min=2, max=50)])
+    email = StringField('email', validators=[DataRequired(), Length(min=2, max=50), Email(message="Invalid email address.")])
+    password = PasswordField('password', validators=[DataRequired(), Length(min=8, max=50)])
+    countryCode = StringField('countryCode', validators=[DataRequired(), Length(min=2, max=50)])
+    mobileNo = IntegerField('mobileNo', validators=[DataRequired(), Length(min=2, max=50)])
+    empID = IntegerField('empID', validators=[DataRequired(), Length(min=2, max=50)])
+    role = StringField('role', validators=[DataRequired(), Length(min=2, max=50)])
+    userType = StringField('userType', validators=[DataRequired(), Length(min=2, max=50)])
+    
+    
 
 
 users_bp = Blueprint('user_routes', __name__)
@@ -22,12 +31,23 @@ def create_user():
     data = request.get_json()
     form = RegisterForm(data=data)
     
-    username = form.username.data
+    firstName = form.firstName.data
     email = form.email.data
     
+    
     if form.validate():
+        
+        
+        # userCheck=User.findOne({
+        #     email:email,
+        #     status:True
+        # })
+        # if(userCheck){
+        #     return jsonify({'message': 'User created', 'id': new_user.id}),400 
+            
+        # }
         try:         
-            new_user = User(username=username, email=email)
+            new_user = User(firstName=firstName, email=email)
             db.session.add(new_user)
             db.session.commit()
             return jsonify({'message': 'User created', 'id': new_user.id}), 201
@@ -58,6 +78,8 @@ def get_user(id):
 @users_bp.route('/users/<int:id>', methods=['PUT'])
 def update_user(id):
     data = request.get_json()
+    
+    
 
     user = User.query.get(id)
     if not user:
