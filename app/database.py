@@ -2,7 +2,6 @@ from flask import Flask
 from app.config import Config
 from app.extensions import db, migrate  # Import extensions
 from app.routes import register_routes  # Import register_routes function
-from flask_wtf.csrf import CSRFProtect
 
 def create_app():
     app = Flask(__name__)
