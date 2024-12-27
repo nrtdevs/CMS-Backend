@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\lenovo\Desktop\CMS-project\CMS-Backend-Main\CMS-Backend\venv"
+VIRTUAL_ENV="C:\Users\hp\Desktop\cms-main\CMS-Backend\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
