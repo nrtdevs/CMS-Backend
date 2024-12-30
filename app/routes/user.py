@@ -44,6 +44,8 @@ def get_users():
     page = request.args.get('page', default=1, type=int)  # Default page is 1
     per_page = request.args.get('per_page', default=10, type=int)  # Default items per page is 10
 
+    
+
     # Fetch paginated users from the database
     paginated_users = User.query.paginate(page=page, per_page=per_page, error_out=False)
 
