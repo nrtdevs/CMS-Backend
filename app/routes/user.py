@@ -3,6 +3,8 @@ from flask import Blueprint, request, jsonify
 from app.models.user import User, db
 from sqlalchemy.exc import IntegrityError
 from cerberus import Validator
+from werkzeug.security import generate_password_hash, check_password_hash
+from .token import verifyJWTToken
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for Flask-WTF CSRF protection
@@ -22,19 +24,19 @@ registerSchema = {
 }
 
 validator = Validator(registerSchema)
-
 # CREATE user
 @users_bp.route('/register', methods=['POST'])
 def create_user():
     data = request.get_json()
+
     if not validator.validate(data):
         return jsonify({"errors": validator.errors}), 400
-    print("data",data )
+    data['password'] = generate_password_hash(data['password'])
     new_user = User(**data) 
     db.session.add(new_user)
     db.session.commit()
+   
     
-
     return jsonify({"message": "User registered successfully", "data": data}), 200
 
 # READ all users 
@@ -43,8 +45,6 @@ def get_users():
     # Get pagination parameters from the request
     page = request.args.get('page', default=1, type=int)  # Default page is 1
     per_page = request.args.get('per_page', default=10, type=int)  # Default items per page is 10
-
-    
 
     # Fetch paginated users from the database
     paginated_users = User.query.paginate(page=page, per_page=per_page, error_out=False)
@@ -79,9 +79,12 @@ def get_users():
     }), 200
 
 
-# READ a single user
-@users_bp.route('/users/<int:id>', methods=['GET'])
+
+@users_bp.route('/<int:id>', methods=['GET'])
+@verifyJWTToken
 def get_user(id):
+
+    # Fetch the user from the database
     user = User.query.filter_by(id=id).first()
 
     # If the user does not exist, return a 404 error
@@ -163,5 +166,4 @@ def delete_user(id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User deleted'}), 200
-
 

@@ -5,4 +5,5 @@ Flask-Cors
 python-dotenv
 pymysql
 flask-wtf
-cerberus 
+cerberus
+PyJWT
