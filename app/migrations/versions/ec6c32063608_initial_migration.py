@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 636dfc07a3ec
+Revision ID: ec6c32063608
 Revises: 
-Create Date: 2024-12-30 15:54:09.255716
+Create Date: 2025-01-01 18:36:07.964408
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '636dfc07a3ec'
+revision = 'ec6c32063608'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -25,17 +25,18 @@ def upgrade():
     sa.Column('email', sa.String(length=120), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
     sa.Column('countryCode', sa.String(length=120), nullable=False),
-    sa.Column('mobileNo', sa.Integer(), nullable=False),
-    sa.Column('empID', sa.Integer(), nullable=False),
+    sa.Column('mobileNo', sa.BigInteger(), nullable=False),
+    sa.Column('empID', sa.String(length=120), nullable=False),
     sa.Column('role', sa.String(length=120), nullable=False),
-    sa.Column('userType', sa.Enum('user', 'master_admin', name='usertypeenum'), nullable=False),
-    sa.Column('status', sa.Boolean(), nullable=False),
+    sa.Column('userType', sa.String(length=120), nullable=False),
+    sa.Column('status', sa.Boolean(), nullable=True),
     sa.Column('is_blocked', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('deletedAt', sa.DateTime(), nullable=True),
-    sa.PrimaryKeyConstraint('id', 'empID'),
+    sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('empID'),
     sa.UniqueConstraint('mobileNo')
     )
     # ### end Alembic commands ###

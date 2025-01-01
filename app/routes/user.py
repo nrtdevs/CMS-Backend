@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from app.models.user import User, db
 from sqlalchemy.exc import IntegrityError
 from cerberus import Validator
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 from .token import verifyJWTToken
 
 app = Flask(__name__)
@@ -18,9 +18,8 @@ registerSchema = {
     'password': {'type': 'string', 'minlength': 8, 'maxlength': 50, 'required': True},
     'countryCode': {'type': 'string', 'minlength': 2, 'maxlength': 50, 'required': True},
     'mobileNo': {'type': 'integer', 'required': True},
-    'empID': {'type': 'integer', 'required': True},
+    'empID': {'type': 'string', 'required': True},
     'role': {'type': 'string', 'minlength': 2, 'maxlength': 50, 'required': True},
-    'userType': {'type': 'string', 'allowed': ['user', 'master_admin'], 'required': True},
 }
 
 validator = Validator(registerSchema)
@@ -28,14 +27,12 @@ validator = Validator(registerSchema)
 @users_bp.route('/register', methods=['POST'])
 def create_user():
     data = request.get_json()
-
     if not validator.validate(data):
         return jsonify({"errors": validator.errors}), 400
     data['password'] = generate_password_hash(data['password'])
     new_user = User(**data) 
     db.session.add(new_user)
     db.session.commit()
-   
     
     return jsonify({"message": "User registered successfully", "data": data}), 200
 
@@ -66,7 +63,6 @@ def get_users():
         for user in paginated_users.items
     ]
 
-    # Return the serialized data along with pagination metadata
     return jsonify({
         "message": "Users fetched successfully",
         "data": users_list,
@@ -81,13 +77,9 @@ def get_users():
 
 
 @users_bp.route('/<int:id>', methods=['GET'])
-@verifyJWTToken
+@verifyJWTToken(['master_admin', 'user'])
 def get_user(id):
-
-    # Fetch the user from the database
     user = User.query.filter_by(id=id).first()
-
-    # If the user does not exist, return a 404 error
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -110,6 +102,7 @@ def get_user(id):
 
 # UPDATE user
 @users_bp.route('/users/<int:id>', methods=['PUT'])
+@verifyJWTToken(['master_admin'])
 def update_user(id):
     # Get the input data from the request body
     data = request.get_json()

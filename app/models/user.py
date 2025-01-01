@@ -13,12 +13,11 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     countryCode = db.Column(db.String(120), nullable=False)
-    mobileNo = db.Column(db.Integer, unique=True, nullable=False)
-    empID = db.Column(db.Integer, primary_key=True)
+    mobileNo = db.Column(db.BigInteger, unique=True, nullable=False)
+    empID = db.Column(db.String(120),unique=True, nullable=False)
     role = db.Column(db.String(120), nullable=False)
-    userType = db.Column(db.Enum(UserTypeEnum), nullable=False, default=UserTypeEnum.user)
-    status = db.Column(db.Boolean, nullable=False, default=False)
-    # Boolean to indicate if the user is blocked
+    userType = db.Column(db.String(120), nullable=False, default=UserTypeEnum.user)
+    status = db.Column(db.Boolean, default=True)
     is_blocked = db.Column(db.Boolean, nullable=False, default=False)
 
     # Timestamp for when the record is created

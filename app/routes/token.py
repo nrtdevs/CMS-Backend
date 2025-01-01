@@ -9,48 +9,52 @@ from functools import wraps
 load_dotenv()
 SECRET_KEY =os.getenv('JWT_SECRET_KEY')
 
-def generateJWTToken(userId, email):
-    # Ensure that secret_key is a string
+def generateJWTToken(userId, email,userType):
     if not isinstance(SECRET_KEY, str):
-        raise ValueError("secret_key must be a string")
-    
+        raise ValueError("secret_key must be a string")  
     payload = {
         'user_id': userId,
         'email': email,
+        'userType':userType,
         'exp': datetime.utcnow() + timedelta(hours=24),  # Token expires in 24 hours
         'iat': datetime.utcnow()  # Token issued at the current time
     }
-    
     # Generate JWT token with HS256 algorithm
     token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
     return token
 
-def verifyJWTToken(func):
-    @wraps(func)
-    def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            try:
-                # Decode the token (don't use the full auth_header, just the token part)
-                decodeToken = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-                # Fetch the user based on the user_id from the token
-                user = User.query.filter_by(id=decodeToken.get('user_id')).first()
-                if user:
-                    request.user = user
-                    return func(*args, **kwargs)  # Proceed to the original function
-                else:
-                    print("User not found in the database.")
-                    return jsonify({"error": "User not found"}), 404
-            except jwt.ExpiredSignatureError:
-                print("Token has expired.")
-                return jsonify({"error": "Token has expired"}), 401
-            except jwt.InvalidTokenError:
-                print("Invalid token.")
-                return jsonify({"error": "Invalid token"}), 401
-        else:
-            print("Authorization header is missing or invalid.")
-            return jsonify({"error": "Authorization header is missing or invalid"}), 400
+def verifyJWTToken(allowed_user_types):  # Accept a list of allowed user types
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Get the token from the request headers
+            token = request.headers.get('Authorization')
 
-    return decorated_function
+            if not token:
+                return jsonify({'error': 'Token is missing'}), 403
+
+            try:
+                # Remove the "Bearer " prefix if it's included
+                token = token.replace('Bearer ', '')
+
+                # Decode the JWT token using the secret key
+                decoded_token = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+
+                # Check if the userType in the token is in the allowed user types list
+                if decoded_token['userType'] not in allowed_user_types:
+                    return jsonify({'error': f'Access forbidden: This API is only accessible by {", ".join(allowed_user_types)}'}), 403
+
+                # Add user details to request object for use in the route handler
+                request.user = decoded_token
+
+            except jwt.ExpiredSignatureError:
+                return jsonify({'error': 'Token has expired'}), 401
+            except jwt.InvalidTokenError:
+                return jsonify({'error': 'Invalid token'}), 401
+
+            # Proceed with the original function if token is valid and userType is allowed
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
