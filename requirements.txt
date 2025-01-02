@@ -7,4 +7,3 @@ pymysql
 flask-wtf
 cerberus
 PyJWT
-jwt
