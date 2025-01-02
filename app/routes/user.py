@@ -25,6 +25,7 @@ registerSchema = {
 validator = Validator(registerSchema)
 # CREATE user
 @users_bp.route('/register', methods=['POST'])
+@verifyJWTToken(['master_admin'])
 def create_user():
     data = request.get_json()
     if not validator.validate(data):
