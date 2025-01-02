@@ -75,8 +75,6 @@ def get_users():
         }
     }), 200
 
-
-
 @users_bp.route('/<int:id>', methods=['GET'])
 @verifyJWTToken(['master_admin', 'user'])
 def get_user(id):
@@ -160,4 +158,34 @@ def delete_user(id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User deleted'}), 200
+
+# UPDATE user
+@users_bp.route('/block/<int:id>', methods=['POST'])
+@verifyJWTToken(['master_admin'])
+def block_user(id):
+    # Get the input data from the request body
+    data = request.get_json()
+
+    # Validate if the necessary data is provided (you can adjust the fields to be required)
+    if not data:
+        return jsonify({'error': 'No input data provided'}), 400
+
+    # Fetch the user by ID
+    user = User.query.filter_by(id=id).first()
+
+    # If user not found, return a 404 error
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.userType =='master_admin':
+        return jsonify({'error': 'Master admin can not be block'}), 404
+    if user.is_blocked==True:
+        return jsonify({'error': 'User Already Blocked'}), 404
+
+
+    user.status = data.get('status', False)
+    user.is_blocked = data.get('is_blocked', True)
+
+    db.session.commit()
+
+    return jsonify({"message": "User blocked successfully"}), 200
 

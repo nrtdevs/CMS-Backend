@@ -22,9 +22,13 @@ def login():
 
     if not validator.validate(data):
         return jsonify({"errors": validator.errors}), 400
+    
     email = data.get('email')
     password = data.get('password')
     user = User.query.filter_by(email=email).first()
+    if user.is_blocked==True:
+        return jsonify({"error": "You have been blocked"}), 401
+    
     if not user or not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
     
