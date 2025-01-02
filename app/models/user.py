@@ -16,7 +16,7 @@ class User(db.Model):
     mobileNo = db.Column(db.BigInteger, unique=True, nullable=False)
     empID = db.Column(db.String(120),unique=True, nullable=False)
     role = db.Column(db.String(120), nullable=False)
-    userType = db.Column(db.String(120), nullable=False, default=UserTypeEnum.user)
+    userType = db.Column(db.String(120), nullable=False, default='user')
     status = db.Column(db.Boolean, default=True)
     is_blocked = db.Column(db.Boolean, nullable=False, default=False)
 
