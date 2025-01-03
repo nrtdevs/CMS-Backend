@@ -5,6 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from cerberus import Validator
 from werkzeug.security import generate_password_hash
 from .token import verifyJWTToken
+from .notification import create_notification
+from app.models import Notification
+
+
+
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for Flask-WTF CSRF protection
@@ -34,7 +40,12 @@ def create_user():
     new_user = User(**data) 
     db.session.add(new_user)
     db.session.commit()
-    
+    new_notification = {
+            "user_id":'user_id',
+            "message":'message',
+            "module":'module'
+        }
+    create_notification(new_notification)
     return jsonify({"message": "User registered successfully", "data": data}), 200
 
 # READ all users 
@@ -188,4 +199,10 @@ def block_user(id):
     db.session.commit()
 
     return jsonify({"message": "User blocked successfully"}), 200
+
+
+
+
+
+
 

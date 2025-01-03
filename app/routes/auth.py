@@ -5,6 +5,9 @@ from app.models.user import User, db
 from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash
 from .token import generateJWTToken
+from .notification import create_notification
+
+
 app = Flask(__name__)
 secret_key = app.config['SECRET_KEY']
 
@@ -26,14 +29,20 @@ def login():
     email = data.get('email')
     password = data.get('password')
     user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({"error": "User Not Found"}), 401
     if user.is_blocked==True:
         return jsonify({"error": "You have been blocked"}), 401
-    
-    if not user or not check_password_hash(user.password, password):
+    if not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
-    
     generatedToken=generateJWTToken(user.id,user.email,user.userType)
-  
+    new_notification = {
+            "user_id":user.id,
+            "message":'Login successfully',
+            "module":'login'
+        }
+    create_notification(new_notification)
     return jsonify({
         "message": "Login successful",
         "accessToken":generatedToken,
