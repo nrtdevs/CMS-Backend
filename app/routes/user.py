@@ -31,14 +31,27 @@ def create_user():
     if not validator.validate(data):
         return jsonify({"errors": validator.errors}), 400
     data['password'] = generate_password_hash(data['password'])
-    new_user = User(**data) 
-    db.session.add(new_user)
-    db.session.commit()
+    try:
+        new_user = User(**data) 
+        db.session.add(new_user)
+        db.session.commit()
+        user_data = {
+            "id": new_user.id,
+            "firstName": new_user.firstName,
+            "lastName": new_user.lastName,
+            "email": new_user.email,
+            "role": new_user.role,
+            "mobileNo": new_user.mobileNo,
+        }
+        return jsonify({"message": "User registered successfully", "data": user_data}), 200
     
-    return jsonify({"message": "User registered successfully", "data": data}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "An error occurred while creating the user.", "details": str(e)}), 500
 
-# READ all users 
-@users_bp.route('/users', methods=['GET'])
+# READ all users for master_admin
+@users_bp.route('/all', methods=['GET'])
+@verifyJWTToken(['master_admin'])
 def get_users():
     # Get pagination parameters from the request
     page = request.args.get('page', default=1, type=int)  # Default page is 1

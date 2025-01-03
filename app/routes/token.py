@@ -45,9 +45,16 @@ def verifyJWTToken(allowed_user_types):  # Accept a list of allowed user types
                 if decoded_token['userType'] not in allowed_user_types:
                     return jsonify({'error': f'Access forbidden: This API is only accessible by {", ".join(allowed_user_types)}'}), 403
 
+                checkUser = User.query.filter_by(id=decoded_token['user_id']).first()
+                if not checkUser:
+                    return jsonify({'error': 'User not found'}), 404
+                
+                if checkUser.is_blocked==True:
+                    return jsonify({"error": "You have been blocked"}), 401
+                
                 # Add user details to request object for use in the route handler
-                request.user = decoded_token
-
+                request.user = checkUser
+                
             except jwt.ExpiredSignatureError:
                 return jsonify({'error': 'Token has expired'}), 401
             except jwt.InvalidTokenError:

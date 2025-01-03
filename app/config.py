@@ -9,3 +9,4 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
     WTF_CSRF_ENABLED=False
+    # SQLALCHEMY_ECHO=True

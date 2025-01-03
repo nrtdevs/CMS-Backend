@@ -29,6 +29,4 @@ class User(db.Model):
     # Timestamp for when the record is deleted (soft delete)
     deletedAt = db.Column(db.DateTime, nullable=True)
     
-   # Relationships
-    biddings = db.relationship("Bidding", back_populates="user", cascade="all, delete-orphan")
-    projects = db.relationship("Project", back_populates="user", cascade="all, delete-orphan")
+

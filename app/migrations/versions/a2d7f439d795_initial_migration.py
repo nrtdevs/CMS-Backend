@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: a1ef08a3dda6
+Revision ID: a2d7f439d795
 Revises: 
-Create Date: 2025-01-02 17:03:50.212225
+Create Date: 2025-01-03 16:38:42.560821
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a1ef08a3dda6'
+revision = 'a2d7f439d795'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,14 +22,12 @@ def upgrade():
     sa.Column('bidId', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('projectName', sa.String(length=80), nullable=False),
     sa.Column('projectDescription', sa.String(length=300), nullable=True),
-    sa.Column('skills', sa.String(length=80), nullable=False),
+    sa.Column('skills', sa.JSON(), nullable=True),
     sa.Column('currency', sa.String(length=80), nullable=True),
     sa.Column('bidAmount', sa.Integer(), nullable=True),
     sa.Column('platform', sa.String(length=80), nullable=False),
     sa.Column('bidDate', sa.Date(), nullable=False),
     sa.Column('uploadUrl', sa.String(length=255), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('status', sa.String(length=120), nullable=False),
     sa.Column('clientName', sa.String(length=80), nullable=False),
     sa.Column('clientEmail', sa.String(length=120), nullable=False),
@@ -37,6 +35,8 @@ def upgrade():
     sa.Column('clientCompany', sa.String(length=120), nullable=True),
     sa.Column('clientLocation', sa.String(length=120), nullable=True),
     sa.Column('remarks', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('userId', sa.Integer(), nullable=False),
     sa.Column('projectId', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['projectId'], ['projects.projectId'], ),
@@ -60,8 +60,8 @@ def upgrade():
     sa.Column('approvedBy', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
-    sa.Column('bidId', sa.Integer(), nullable=True),
     sa.Column('userId', sa.Integer(), nullable=False),
+    sa.Column('bidId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['bidId'], ['biddings.bidId'], ),
     sa.ForeignKeyConstraint(['userId'], ['users.id'], ),
     sa.PrimaryKeyConstraint('projectId')

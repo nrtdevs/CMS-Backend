@@ -26,10 +26,12 @@ def login():
     email = data.get('email')
     password = data.get('password')
     user = User.query.filter_by(email=email).first()
+    if  not user:
+        return jsonify({"error": "User not found"}), 401
     if user.is_blocked==True:
         return jsonify({"error": "You have been blocked"}), 401
     
-    if not user or not check_password_hash(user.password, password):
+    if not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
     
     generatedToken=generateJWTToken(user.id,user.email,user.userType)

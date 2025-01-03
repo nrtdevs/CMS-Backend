@@ -19,9 +19,9 @@ class Project(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    bidId = db.Column(db.Integer, db.ForeignKey('biddings.bidId'), nullable=True)
     userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-
-    # Relationships
-    bidding = db.relationship('Bidding', back_populates='project', uselist=False)
-    user = db.relationship('User', back_populates='projects')
+    bidId = db.Column(db.Integer, db.ForeignKey('biddings.bidId'), nullable=False)
+    
+    user = db.relationship('User', backref='projects', lazy=True)
+    bidding = db.relationship('Bidding', backref='projects', lazy=True, 
+                              foreign_keys=[bidId])
