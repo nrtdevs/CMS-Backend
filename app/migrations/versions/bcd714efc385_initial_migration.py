@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 9aef2d93e9ee
+Revision ID: bcd714efc385
 Revises: 
-Create Date: 2025-01-06 11:19:15.504534
+Create Date: 2025-01-06 16:55:00.087210
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '9aef2d93e9ee'
+revision = 'bcd714efc385'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -31,22 +31,24 @@ def upgrade():
     sa.Column('status', sa.String(length=120), nullable=False),
     sa.Column('clientName', sa.String(length=80), nullable=False),
     sa.Column('clientEmail', sa.String(length=120), nullable=False),
-    sa.Column('clientContact', sa.Integer(), nullable=False),
+    sa.Column('countryCode', sa.String(length=120), nullable=False),
+    sa.Column('clientContact', sa.BigInteger(), nullable=False),
     sa.Column('clientCompany', sa.String(length=120), nullable=True),
     sa.Column('clientLocation', sa.String(length=120), nullable=True),
     sa.Column('remarks', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.Column('userId', sa.Integer(), nullable=False),
     sa.Column('projectId', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['projectId'], ['projects.projectId'], ),
     sa.ForeignKeyConstraint(['userId'], ['users.id'], ),
     sa.PrimaryKeyConstraint('bidId'),
-    sa.UniqueConstraint('clientContact'),
-    sa.UniqueConstraint('clientEmail')
+    sa.UniqueConstraint('projectName')
     )
     op.create_table('projects',
     sa.Column('projectId', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('currency', sa.String(length=80), nullable=True),
     sa.Column('totalBudget', sa.Integer(), nullable=True),
     sa.Column('frontDev', sa.JSON(), nullable=True),
     sa.Column('backDev', sa.JSON(), nullable=True),
@@ -60,6 +62,7 @@ def upgrade():
     sa.Column('approvedBy', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.Column('userId', sa.Integer(), nullable=False),
     sa.Column('bidId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['bidId'], ['biddings.bidId'], ),
@@ -89,13 +92,13 @@ def upgrade():
     )
     op.create_table('notifications',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('message', sa.String(length=255), nullable=False),
     sa.Column('module', sa.String(length=255), nullable=False),
     sa.Column('seen', sa.Boolean(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
