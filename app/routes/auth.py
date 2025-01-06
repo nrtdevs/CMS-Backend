@@ -5,6 +5,7 @@ from app.models.user import User, db
 from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash
 from .token import generateJWTToken
+from .notification import create_notification
 app = Flask(__name__)
 secret_key = app.config['SECRET_KEY']
 
@@ -35,6 +36,14 @@ def login():
         return jsonify({"error": "Invalid email or password"}), 401
     
     generatedToken=generateJWTToken(user.id,user.email,user.userType)
+    
+    
+    new_notification = {
+        "user_id": user.id,
+        "message": "User logged in",
+        "module": "auth"
+    }
+    create_notification(new_notification)
   
     return jsonify({
         "message": "Login successful",

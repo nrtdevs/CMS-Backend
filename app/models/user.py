@@ -28,5 +28,10 @@ class User(db.Model):
 
     # Timestamp for when the record is deleted (soft delete)
     deletedAt = db.Column(db.DateTime, nullable=True)
+    notifications = db.relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     
 
