@@ -29,3 +29,9 @@ class User(db.Model):
     # Timestamp for when the record is deleted (soft delete)
     deletedAt = db.Column(db.DateTime, nullable=True)
     
+    
+
+    
+    # Back-reference for logs
+    logs = db.relationship('Log', back_populates='user')
+    

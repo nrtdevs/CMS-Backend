@@ -1,6 +1,6 @@
 from flask import Flask,request,jsonify
 from cerberus import Validator
-from app.models.user import User
+from app.models.user import User, db
 from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash
 from .token import generateJWTToken
@@ -66,10 +66,9 @@ def login():
         "ipAddress": ip_address,
         "userAgent": user_agent_details["browser"],
         "device": user_agent_details["device"],
-    }
+    }  
     createActivityLogs(logData)
-
-  
+    
     # Return the response with serialized log data
     return jsonify({
         "message": "Login successful",
