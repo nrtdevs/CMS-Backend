@@ -363,3 +363,6 @@ def approve_bidding():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while approving the bidding.", "details": str(e)}), 500
+
+
+
