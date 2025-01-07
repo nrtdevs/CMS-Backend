@@ -30,6 +30,6 @@ class Bidding(db.Model):
     userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', backref='biddings', lazy=True)
 
-    projectId = db.Column(db.Integer, db.ForeignKey('projects.projectId'), nullable=True)
+    projectId = db.Column(db.Integer, db.ForeignKey('projects.projectId', use_alter=True), nullable=True)
     project = db.relationship('Project', backref='biddings', lazy=True, 
                               foreign_keys=[projectId])
