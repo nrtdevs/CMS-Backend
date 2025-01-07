@@ -106,10 +106,22 @@ def get_user(id):
         "is_blocked": user.is_blocked,
         "status": user.status,
         "created_at": user.created_at,
-        "updated_at": user.updated_at
+        "updated_at": user.updated_at,
+        "notifications": user.notifications
     }
-
-    # Return the serialized user data
+    #   # Serialize the notifications
+    # notifications_data = [
+    #     {
+    #         "id": notification.id,
+    #         "message": notification.message,
+    #         "module": notification.module,
+    #         "seen": notification.seen,
+    #         "created_at": notification.created_at,
+    #         "updated_at": notification.updated_at
+    #     }
+    #     for notification in user.notifications
+    # ]
+    
     return jsonify({"message": "User fetched successfully", "data": user_data}), 200
 
 # UPDATE user

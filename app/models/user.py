@@ -19,19 +19,14 @@ class User(db.Model):
     userType = db.Column(db.String(120), nullable=False, default='user')
     status = db.Column(db.Boolean, default=True)
     is_blocked = db.Column(db.Boolean, nullable=False, default=False)
-
-    # Timestamp for when the record is created
+    # Timestamp 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    # Timestamp for when the record is last updated
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Timestamp for when the record is deleted (soft delete)
     deletedAt = db.Column(db.DateTime, nullable=True)
+    # relationship
     notifications = db.relationship(
         "Notification",
         back_populates="user",
         cascade="all, delete-orphan",
     )
     
-

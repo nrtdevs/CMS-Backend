@@ -40,6 +40,8 @@ def verifyJWTToken(allowed_user_types):  # Accept a list of allowed user types
 
                 # Decode the JWT token using the secret key
                 decoded_token = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+                
+                
 
                 # Check if the userType in the token is in the allowed user types list
                 if decoded_token['userType'] not in allowed_user_types:
