@@ -30,3 +30,4 @@ class User(db.Model):
         cascade="all, delete-orphan",
     )
     
+
