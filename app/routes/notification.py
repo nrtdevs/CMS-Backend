@@ -51,7 +51,7 @@ def get_notifications_by_user_id(user_id):
         }), 500
 
 
-@notification_bp.route('/notifications/<int:notification_id>/mark_as_read', methods=['PUT'])
+@notification_bp.route('/mark_as_read/<int:notification_id>', methods=['PUT'])
 @verifyJWTToken(['master_admin','user'])
 def mark_notification_as_read(notification_id):
     try:
@@ -86,7 +86,7 @@ def mark_notification_as_read(notification_id):
 
 
 # Define the route for marking all notifications as read
-@notification_bp.route('/notifications/<int:user_id>/mark_all_as_read', methods=['PUT'])
+@notification_bp.route('/mark_all_as_read/<int:user_id>', methods=['PUT'])
 @verifyJWTToken(['master_admin','user'])
 def mark_all_notifications_as_read(user_id):
     try:

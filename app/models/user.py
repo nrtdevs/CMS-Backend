@@ -29,5 +29,6 @@ class User(db.Model):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    logs=db.relationship('Log', back_populates='user', cascade='all, delete-orphan')
     
 

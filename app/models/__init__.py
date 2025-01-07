@@ -3,4 +3,5 @@ from .user import User  # Import models here
 from .bidding import Bidding
 from .project import Project
 from .Notification import Notification
+from .logs import Log
 

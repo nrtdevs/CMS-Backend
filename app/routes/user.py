@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 from .token import verifyJWTToken
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for Flask-WTF CSRF protection
+app.config['SECRET_KEY'] = 'your_secret_key'
 
 users_bp = Blueprint('user_routes', __name__)
 
@@ -43,8 +43,7 @@ def create_user():
             "role": new_user.role,
             "mobileNo": new_user.mobileNo,
         }
-        return jsonify({"message": "User registered successfully", "data": user_data}), 200
-    
+        return jsonify({"message": "User registered successfully", "data": user_data}), 200 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while creating the user.", "details": str(e)}), 500
@@ -94,22 +93,8 @@ def get_user(id):
     user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-
-    # Serialize the user data into a dictionary, excluding userType
-    user_data = {
-        "id": user.id,
-        "firstName": user.firstName,
-        "lastName": user.lastName,
-        "email": user.email,
-        "role": user.role,
-        "mobileNo": user.mobileNo,
-        "is_blocked": user.is_blocked,
-        "status": user.status,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at,
-        "notifications": user.notifications
-    }
-    #   # Serialize the notifications
+    
+    # Serialize the notifications
     # notifications_data = [
     #     {
     #         "id": notification.id,
@@ -121,7 +106,20 @@ def get_user(id):
     #     }
     #     for notification in user.notifications
     # ]
-    
+     # Serialize the user data into a dictionary, excluding userType
+    user_data = {
+        "id": user.id,
+        "firstName": user.firstName,
+        "lastName": user.lastName,
+        "email": user.email,
+        "role": user.role,
+        "mobileNo": user.mobileNo,
+        "is_blocked": user.is_blocked,
+        "status": user.status,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at,
+        # "notifications": notifications_data
+    }
     return jsonify({"message": "User fetched successfully", "data": user_data}), 200
 
 # UPDATE user
