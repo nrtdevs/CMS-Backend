@@ -4,4 +4,5 @@ from .bidding import Bidding
 from .project import Project
 from .Notification import Notification
 from .logs import Log
+from .token import Token
 
