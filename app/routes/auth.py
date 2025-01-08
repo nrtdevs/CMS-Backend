@@ -6,9 +6,7 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash
 from .token import generateJWTToken
 from .notification import create_notification
-from .logs import createActivityLogs
-from user_agents import parse
-
+from .logs import addLogsActivity
 app = Flask(__name__)
 secret_key = app.config['SECRET_KEY']
 
@@ -19,19 +17,6 @@ loginSchema = {
   }
 
 validator = Validator(loginSchema)
-# Helper function to extract user-agent details
-def extract_user_agent_details():
-    user_agent_string = request.headers.get("User-Agent", "Unknown")
-    user_agent = parse(user_agent_string)
-
-    return {
-        "browser": f"{user_agent.browser.family} {user_agent.browser.version_string}",
-        "os": f"{user_agent.os.family} {user_agent.os.version_string}",
-        "device": user_agent.device.family,
-        "is_mobile": user_agent.is_mobile,
-        "is_tablet": user_agent.is_tablet,
-        "is_pc": user_agent.is_pc,
-    }
 
 
 @auth_bp.route ('/login',methods=['POST'])
@@ -51,31 +36,24 @@ def login():
     
     if not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
-    
+    # curTime= datetime.utcnow() + timedelta(hours=24)
+    # token.filterBy(userId:user.id).createdat(-1)
+    # generatedToken=''
+    # token.exp<curTime:
+    #     generatedToken=generateJWTToken(user.id,user.email,user.userType)
+    # else:
+    #     generatedToken=token.token
     generatedToken=generateJWTToken(user.id,user.email,user.userType)
+    
     new_notification = {
         "user_id": user.id,
         "message": "User logged in",
         "module": "auth"
     }
     create_notification(new_notification)
-    
-     # Extract IP address and user-agent details
-    
-    ip_address = request.remote_addr or "Unknown"
-    user_agent_details = extract_user_agent_details()
-  
-    # Prepare log data
-    logData = {
-        "activity": "login",
-        "desc": "Successful login",
-        "userId": user.id,
-        "ipAddress": ip_address,
-        "userAgent": user_agent_details["browser"],
-        "device": user_agent_details["device"],
-    }  
-    createActivityLogs(logData)
-    
+    request.user=user
+    addLogsActivity(request,'Login','login successfully')
+      
     return jsonify({
         "message": "Login successful",
         "accessToken":generatedToken,

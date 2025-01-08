@@ -3,11 +3,37 @@ from app.models.logs import Log
 from flask import Blueprint, request, jsonify
 from app.models.logs import Log
 from .token import verifyJWTToken
+from user_agents import parse
 
 logs_bp = Blueprint("logs_routes", __name__)
 
-# Function to log activity
-def createActivityLogs(logData):  
+# Helper function to extract user-agent details
+def extract_user_agent_details():
+    user_agent_string = request.headers.get("User-Agent", "Unknown")
+    user_agent = parse(user_agent_string)
+
+    return {
+        "browser": f"{user_agent.browser.family} {user_agent.browser.version_string}",
+        "os": f"{user_agent.os.family} {user_agent.os.version_string}",
+        "device": user_agent.device.family,
+        "is_mobile": user_agent.is_mobile,
+        "is_tablet": user_agent.is_tablet,
+        "is_pc": user_agent.is_pc,
+    }
+
+
+
+def addLogsActivity(request,activity,desc):  # Accept a list of allowed user types
+    ip_address = request.remote_addr or "Unknown"
+    user_agent_details = extract_user_agent_details()
+    logData = {
+                "activity":activity,
+                "desc": desc,
+                "userId": request.user.id,
+                "ipAddress": ip_address,
+                "userAgent": user_agent_details["browser"],
+                "device": user_agent_details["device"],
+             }  
     try:
         new_log = Log(**logData)
         db.session.add(new_log)
@@ -15,7 +41,8 @@ def createActivityLogs(logData):
         print("Success to logs")   
     except Exception as e:
         print("Failed to logs",e)
-    
+ 
+
 @logs_bp.route('/', methods=['GET'])
 @verifyJWTToken(['master_admin'])  # Restrict to master_admin
 def get_logs():
@@ -62,7 +89,4 @@ def get_logs():
         "has_prev": logs.has_prev,
     }), 200 
     
-
-
-
 

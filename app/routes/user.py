@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from cerberus import Validator
 from werkzeug.security import generate_password_hash
 from .token import verifyJWTToken
-
+from .logs import addLogsActivity
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 
@@ -30,7 +30,9 @@ validator = Validator(registerSchema)
 def create_user():
     data = request.get_json()
     if not validator.validate(data):
+        addLogsActivity(request,'Register','registration unsuccessfully')
         return jsonify({"errors": validator.errors}), 400
+
     data['password'] = generate_password_hash(data['password'])
     try:
         new_user = User(**data) 
@@ -44,6 +46,8 @@ def create_user():
             "role": new_user.role,
             "mobileNo": new_user.mobileNo,
         }
+        addLogsActivity(request,'Register','registration successfully')
+        
         return jsonify({"message": "User registered successfully", "data": user_data}), 200 
     except Exception as e:
         db.session.rollback()
@@ -91,23 +95,12 @@ def get_users():
 @users_bp.route('/<int:id>', methods=['GET'])
 @verifyJWTToken(['master_admin', 'user'])
 def get_user(id):
+    
+    
     user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Serialize the notifications
-    # notifications_data = [
-    #     {
-    #         "id": notification.id,
-    #         "message": notification.message,
-    #         "module": notification.module,
-    #         "seen": notification.seen,
-    #         "created_at": notification.created_at,
-    #         "updated_at": notification.updated_at
-    #     }
-    #     for notification in user.notifications
-    # ]
-     # Serialize the user data into a dictionary, excluding userType
     user_data = {
         "id": user.id,
         "firstName": user.firstName,
