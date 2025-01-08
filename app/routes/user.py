@@ -9,6 +9,7 @@ from .token import verifyJWTToken
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 
+
 users_bp = Blueprint('user_routes', __name__)
 
 registerSchema = {

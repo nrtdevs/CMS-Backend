@@ -9,50 +9,52 @@ from app.models.user import User, db
 from app.models.project import Project, db
 
 projects_bp = Blueprint('bidding_routes', __name__)
-approvedSchema = {
-    'bidId': {'type': 'integer', 'required': True},    
+EditProjectSchema = {
+    'projectId': {'type': 'integer', 'required': True},    
     'teachLead': {
         'type': 'list',
         'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
+        'required': False
     },
     'frontDev': {
         'type': 'list',
         'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
+        'required': False
     },
     'backDev': {
         'type': 'list',
         'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
+        'required': False
     },
     'tester': {
         'type': 'list',
         'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
+        'required': False
     },
     'currency': {'type': 'string', 'maxlength': 80, 'required': False},
     'totalBudget': {'type': 'integer', 'required': False},
-    'startDate': {'type': 'string', 'required': True},
-    'deadlineDate': {'type': 'string', 'required': True},
-    'approvedBy': {'type': 'integer', 'required': True},
+    'startDate': {'type': 'string', 'required': False},
+    'deadlineDate': {'type': 'string', 'required': False},
+    'approvedBy': {'type': 'integer', 'required': False},
 }
-approve_validator = Validator(approvedSchema)
+Edit_validator = Validator(EditProjectSchema)
 
-@projects_bp.route('/project/<int:bidId>', methods=['PUT'])
+@projects_bp.route('/project/<int:projectId>', methods=['PUT'])
 @verifyJWTToken(['master_admin'])
-def update_bidding(bidId):
+def update_bidding(projectId):
     data = request.get_json()
-    bidding = Bidding.query.filter_by(bidId=bidId).first()
+    if not Edit_validator.validate(data):
+        return jsonify({"errors": Edit_validator.errors}), 400
+    
+    project= Project.query.filter_by(projectId=projectId).first()
 
-    if not bidding:
-        return jsonify({'error': 'Bidding not found'}), 404
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
 
     # Update fields
     for key, value in data.items():
-        if hasattr(bidding, key):
-            setattr(bidding, key, value)
-
+        if hasattr(project, key):
+            setattr(project, key, value)
     db.session.commit()
 
-    return jsonify({"message": "Bidding updated successfully"}), 200
+    return jsonify({"message": "Project updated successfully"}), 200

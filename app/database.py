@@ -4,26 +4,16 @@ import os
 from app.config import Config
 from app.extensions import db, migrate  # Import extensions
 from app.routes import register_routes 
-from app.models import User
-from werkzeug.security import generate_password_hash
- 
+from app.seeder import seed_permissions, seed_roles, seed_users
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 
-def seed_users():
-    """Seed the User table with initial data."""
-    master = User.query.filter_by(userType='master_admin').first()
-    if(master):
-        print("Master Admin Already Exists")
-        return
-    Hashed_Password=generate_password_hash('admin@2025')
-    users = [
-        User(firstName="Master",lastName="Admin",countryCode='+91',mobileNo=7987809375, email="nrt@gmail.com",password=Hashed_Password,userType='master_admin',empID='NRT-89',role='CEO'),
-    ]
-    
-    db.session.bulk_save_objects(users)
-    db.session.commit()
-    print("User table seeded successfully!")
+
+def seed_all():
+    """Run all seeders."""
+    seed_permissions()
+    seed_roles()
+    seed_users()
 
 def create_app():
     app = Flask(__name__)
@@ -41,7 +31,7 @@ def create_app():
     def seed():
         """Seed the database with initial data."""
         with app.app_context():
-            seed_users()
+            seed_all()
             db.session.commit()
             click.echo("Database seeded successfully!")
 

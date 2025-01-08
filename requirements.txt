@@ -8,3 +8,4 @@ flask-wtf
 cerberus
 PyJWT
 user-agents
+python-slugify

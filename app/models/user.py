@@ -15,7 +15,6 @@ class User(db.Model):
     countryCode = db.Column(db.String(120), nullable=False)
     mobileNo = db.Column(db.BigInteger, unique=True, nullable=False)
     empID = db.Column(db.String(120),unique=True, nullable=False)
-    role = db.Column(db.String(120), nullable=False)
     userType = db.Column(db.String(120), nullable=False, default='user')
     status = db.Column(db.Boolean, default=True)
     is_blocked = db.Column(db.Boolean, nullable=False, default=False)
@@ -23,7 +22,11 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deletedAt = db.Column(db.DateTime, nullable=True)
+    
+    
     # relationship
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=True)
+    role = db.relationship('Role', back_populates='users')
     notifications = db.relationship(
         "Notification",
         back_populates="user",

@@ -13,6 +13,7 @@ class Bidding(db.Model):
     platform = db.Column(db.String(80), nullable=False)
     bidDate = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     uploadUrl = db.Column(db.String(255), nullable=True)
+    
     status = db.Column(db.String(120), nullable=False, default='pending')
     clientName = db.Column(db.String(80), nullable=False)
     clientEmail = db.Column(db.String(120),  nullable=False)
