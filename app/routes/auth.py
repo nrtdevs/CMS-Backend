@@ -36,13 +36,7 @@ def login():
     
     if not check_password_hash(user.password, password):
         return jsonify({"error": "Invalid email or password"}), 401
-    # curTime= datetime.utcnow() + timedelta(hours=24)
-    # token.filterBy(userId:user.id).createdat(-1)
-    # generatedToken=''
-    # token.exp<curTime:
-    #     generatedToken=generateJWTToken(user.id,user.email,user.userType)
-    # else:
-    #     generatedToken=token.token
+  
     generatedToken=generateJWTToken(user.id,user.email,user.userType)
     
     new_notification = {
@@ -53,6 +47,14 @@ def login():
     create_notification(new_notification)
     request.user=user
     addLogsActivity(request,'Login','login successfully')
+    
+    role_data = {
+        "id": user.role.id,
+        "name": user.role.name,
+        "permissions": [
+            {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
+        ] if user.role.permissions else None
+    } if user.role else None
       
     return jsonify({
         "message": "Login successful",
@@ -62,7 +64,7 @@ def login():
             "firstName": user.firstName,
             "lastName": user.lastName,
             "email": user.email,
-            "role": user.role,
+            "roleDetails": role_data,
             "mobileNo": user.mobileNo,
         }
     }), 200

@@ -43,7 +43,6 @@ def create_user():
             "firstName": new_user.firstName,
             "lastName": new_user.lastName,
             "email": new_user.email,
-            "role": new_user.role,
             "mobileNo": new_user.mobileNo,
         }
         addLogsActivity(request,'Register','registration successfully')
@@ -71,7 +70,7 @@ def get_users():
             "firstName": user.firstName,
             "lastName": user.lastName,
             "email": user.email,
-            "role": user.role,
+            "roleId": user.role.id,
             "mobileNo": user.mobileNo,
             "is_blocked": user.is_blocked,
             "status": user.status,
@@ -101,12 +100,19 @@ def get_user(id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
+    role_data = {
+      "id": user.role.id,
+       "name": user.role.name,
+       "permissions": [
+        {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
+        ] if user.role.permissions else None
+    } if user.role else None
     user_data = {
         "id": user.id,
         "firstName": user.firstName,
         "lastName": user.lastName,
         "email": user.email,
-        "role": user.role,
+        "role": role_data,
         "mobileNo": user.mobileNo,
         "is_blocked": user.is_blocked,
         "status": user.status,
