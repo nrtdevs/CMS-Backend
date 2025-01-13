@@ -42,7 +42,8 @@ def login():
     new_notification = {
         "user_id": user.id,
         "message": "User logged in",
-        "module": "auth"
+        "module": "auth",
+        "subject":"Login"
     }
     create_notification(new_notification)
     request.user=user

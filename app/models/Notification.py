@@ -7,10 +7,14 @@ class Notification(db.Model):
     message = db.Column(db.String(255), nullable=False)
     module = db.Column(db.String(255), nullable=False)
     seen = db.Column(db.Boolean, default=False)
+    subject = db.Column(db.String(255),nullable=True)
+    url = db.Column(db.String(255),nullable = True)
+    
     # Timestamps
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = db.Column(db.DateTime, nullable=True)  # Renamed to snake_case
+    read_at = db.Column(db.DateTime,nullable = True,  onupdate=datetime.utcnow)
     # Relationship
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
     user = db.relationship('User', back_populates='notifications')

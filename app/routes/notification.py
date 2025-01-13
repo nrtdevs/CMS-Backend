@@ -9,11 +9,14 @@ notification_bp = Blueprint('notification', __name__)
 
 def create_notification(notifyData): 
     try:
+        print("dayd",notifyData)
         new_notification = Notification(**notifyData) 
         db.session.add(new_notification)
         db.session.commit()
         print("Success to Notify")
     except Exception as e:
+        print("errror",e)
+        db.session.rollback()
         print("Failed to Notify")
         
 @notification_bp.route('/<int:user_id>', methods=['GET'])
@@ -31,9 +34,12 @@ def get_notifications_by_user_id(user_id):
                 "message": n.message,
                 "module": n.module,
                 "seen": n.seen,
+                "subject":n.subject,
+                "url":n.url,
                 "created_at": n.created_at.isoformat(),
                 "updated_at": n.updated_at.isoformat(),
-                "deleted_at": n.deleted_at.isoformat() if n.deleted_at else None
+                "deleted_at": n.deleted_at.isoformat() if n.deleted_at else None,
+                "read_at":n.read_at.isoformat()
             }
             for n in notifications
         ]
@@ -66,7 +72,8 @@ def mark_notification_as_read(notification_id):
 
         # Update the 'seen' field to True
         notification.seen = True
-        notification.updated_at = datetime.utcnow()  # Update the timestamp
+        notification.updated_at = datetime.utcnow()
+        notification.read_at = datetime.utcnow()
 
         # Commit the changes to the database
         db.session.commit()
@@ -77,6 +84,7 @@ def mark_notification_as_read(notification_id):
         }), 200
 
     except Exception as e:
+        db.session.rollback()
         # Handle errors
         return jsonify({
             "status": "error",
@@ -103,6 +111,7 @@ def mark_all_notifications_as_read(user_id):
         for notification in notifications:
             notification.seen = True
             notification.updated_at = datetime.utcnow()  # Update the timestamp
+            notification.read_at = datetime.utcnow()
 
         # Commit the changes to the database
         db.session.commit()
