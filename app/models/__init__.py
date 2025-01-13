@@ -7,4 +7,5 @@ from .logs import Log
 from .permission import Permission
 from .role import Role
 from .token import Token
+from .assignment import Assignment
 

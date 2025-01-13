@@ -34,4 +34,8 @@ class User(db.Model):
     )
     logs=db.relationship('Log', back_populates='user', cascade='all, delete-orphan')
     
-
+    users = db.relationship(
+        'Project',
+        secondary='project_developers',
+        back_populates='developers'
+    )
