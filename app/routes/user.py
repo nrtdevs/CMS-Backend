@@ -4,7 +4,7 @@ from app.models.user import User, db
 from sqlalchemy.exc import IntegrityError
 from cerberus import Validator
 from werkzeug.security import generate_password_hash
-from .token import verifyJWTToken
+from .token import verifyJWTToken, check_permissions
 from .logs import addLogsActivity
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -20,7 +20,7 @@ registerSchema = {
     'countryCode': {'type': 'string', 'minlength': 2, 'maxlength': 50, 'required': True},
     'mobileNo': {'type': 'integer', 'required': True},
     'empID': {'type': 'string', 'required': True},
-    'role': {'type': 'string', 'minlength': 2, 'maxlength': 50, 'required': True},
+    'role_id': {'type': 'integer','required': True},
 }
 
 validator = Validator(registerSchema)
@@ -93,9 +93,9 @@ def get_users():
 
 @users_bp.route('/<int:id>', methods=['GET'])
 @verifyJWTToken(['master_admin', 'user'])
+@check_permissions(['read-user'])
 def get_user(id):
-    
-    
+
     user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({'error': 'User not found'}), 404

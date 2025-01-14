@@ -7,6 +7,7 @@ from datetime import datetime
 from .token import verifyJWTToken
 from app.models.user import User, db
 from app.models.project import Project, db
+from app.models.assignment import Assignment
 
 biddings_bp = Blueprint('bidding_routes', __name__)
 
@@ -15,11 +16,6 @@ biddingSchema = {
     'userId': {'type': 'integer', 'required': True},
     'projectName': {'type': 'string', 'minlength': 2, 'maxlength': 80, 'required': True},
     'projectDescription': {'type': 'string', 'maxlength': 300, 'required': False},
-    'skills': {
-        'type': 'list',
-        'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
-    },
     'currency': {'type': 'string', 'maxlength': 80, 'required': False},
     'bidAmount': {'type': 'integer', 'required': False},
     'platform': {'type': 'string', 'minlength': 2, 'maxlength': 80, 'required': True},
@@ -30,6 +26,10 @@ biddingSchema = {
     'clientCompany': {'type': 'string', 'maxlength': 120, 'required': False},
     'countryCode': {'type': 'string', 'maxlength': 120, 'required': False},
     'clientLocation': {'type': 'string', 'maxlength': 120, 'required': False},
+    'remarks': {'type': 'string', 'maxlength': 500, 'required': False}, 
+    'commission': {'type': 'boolean', 'required': True}, 
+    'approvedBy':{'type': 'integer', 'required':True}, 
+
   
 }
 
@@ -40,15 +40,10 @@ approvedSchema = {
         'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
         'required': True
     },
-    'frontDev': {
+    'developer_id': {
         'type': 'list',
-        'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
-    },
-    'backDev': {
-        'type': 'list',
-        'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
+        'schema': {'type': 'integer'},
+        'required': False
     },
     'tester': {
         'type': 'list',
@@ -77,6 +72,8 @@ def create_bidding():
         data['bidDate'] = datetime.strptime(data['bidDate'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"error": "Invalid bidDate format. Use YYYY-MM-DD."}), 400
+    data['approvedBy'] = data.get('approvedBy')
+    
     userId = data.get('userId')
     user = User.query.filter_by(id=userId,status=True).first()
     if not user:
@@ -91,7 +88,7 @@ def create_bidding():
             "id": bidding.user.id,
             "firstName": bidding.user.firstName,
             "lastName": bidding.user.lastName,
-            "role": bidding.user.role,
+            "role": str(bidding.user.role),
         } if bidding.user else None
 
         project_data = {
@@ -104,12 +101,10 @@ def create_bidding():
             "bidId": bidding.bidId,
             "projectName": bidding.projectName,
             "projectDescription": bidding.projectDescription,
-            "skills": bidding.skills,
             "currency": bidding.currency,
             "bidAmount": bidding.bidAmount,
             "platform": bidding.platform,
             "bidDate": bidding.bidDate,
-            "uploadUrl": bidding.uploadUrl,
             "status": bidding.status,
             "clientName": bidding.clientName,
             "clientEmail": bidding.clientEmail,
@@ -118,7 +113,9 @@ def create_bidding():
             "clientLocation": bidding.clientLocation,
             "remarks": bidding.remarks,
             "user_id": user_data,
+            "commission": bidding.commission,
             "project_id":project_data,
+            "approvedBy": bidding.approvedBy,
         }
     
         return jsonify({"message": "Bidding created successfully", "data": bidding_data}), 200
@@ -147,7 +144,7 @@ def get_bidding(bidId):
         "id": bidding.user.id,
         "firstName": bidding.user.firstName,
         "lastName": bidding.user.lastName,
-        "role": bidding.user.role,
+        "role": str(bidding.user.role),
     } if bidding.user else None
 
     project_data = {
@@ -170,12 +167,10 @@ def get_bidding(bidId):
         "bidId": bidding.bidId,
         "projectName": bidding.projectName,
         "projectDescription": bidding.projectDescription,
-        "skills": bidding.skills,
         "currency": bidding.currency,
         "bidAmount": bidding.bidAmount,
         "platform": bidding.platform,
         "bidDate": bidding.bidDate,
-        "uploadUrl": bidding.uploadUrl,
         "status": bidding.status,
         "clientName": bidding.clientName,
         "clientEmail": bidding.clientEmail,
@@ -210,12 +205,10 @@ def get_biddings():
             "bidId": bidding.bidId,
             "projectName": bidding.projectName,
             "projectDescription": bidding.projectDescription,
-            "skills": bidding.skills,
             "currency": bidding.currency,
             "bidAmount": bidding.bidAmount,
             "platform": bidding.platform,
             "bidDate": bidding.bidDate,
-            "uploadUrl": bidding.uploadUrl,
             "status": bidding.status,
             "clientName": bidding.clientName,
             "clientEmail": bidding.clientEmail,
@@ -227,7 +220,7 @@ def get_biddings():
                 "id": bidding.user.id,
                 "firstName": bidding.user.firstName,
                 "lastName": bidding.user.lastName,
-                "role": bidding.user.role,
+                "role": str(bidding.user.role),
             } if bidding.user else None,
             "project": {
                 "projectId": bidding.project.projectId,
@@ -269,12 +262,10 @@ def get_biddings_by_user(userId):
             "bidId": bidding.bidId,
             "projectName": bidding.projectName,
             "projectDescription": bidding.projectDescription,
-            "skills": bidding.skills,
             "currency": bidding.currency,
             "bidAmount": bidding.bidAmount,
             "platform": bidding.platform,
             "bidDate": bidding.bidDate,
-            "uploadUrl": bidding.uploadUrl,
             "status": bidding.status,
             "clientName": bidding.clientName,
             "clientEmail": bidding.clientEmail,
@@ -338,28 +329,62 @@ def approve_bidding():
     if approvedBy != bidding.userId and approvedBy != 1:
         return jsonify({'error': 'You are not authorized to approve this bidding'}), 403
     
-    Project_data = {
-        'userId': bidding.userId,
-        "bidId": data['bidId'],
-        "totalBudget": data['totalBudget'],
-        "frontDev": data['frontDev'],
-        "backDev": data['backDev'],
-        "teachLead": data['teachLead'],
-        "tester": data['tester'],
-        "currency": data['currency'],
-        "startDate": data['startDate'],
-        "deadlineDate": data['deadlineDate'],
-        "approvedBy": 'master' if approvedBy != bidding.userId else 'user',
-    }
+    
+    
+    
+    # Developer and tester assignment
+    developer_ids = data.get('developerIds', [])
+    tester_ids = data.get('testerIds', [])
+    
+    # Handle developer assignment if provided
+    if developer_ids:
+        developers = User.query.filter(User.id.in_(developer_ids)).all()
+        if len(developers) != len(developer_ids):
+            return jsonify({'error': 'Some developer IDs are invalid'}), 404
+        for developer in developers:
+            # Here we should append developers to the project (if a project exists)
+            project.developers.append(developer)
+    
+    # Handle tester assignment if provided
+    if tester_ids:
+        testers = User.query.filter(User.id.in_(tester_ids)).all()
+        if len(testers) != len(tester_ids):
+            return jsonify({'error': 'Some tester IDs are invalid'}), 404
+        for tester in testers:
+            project.testers.append(tester)
+
+    # Create and commit project data
     try:
-        project = Project(**Project_data)
+        project_data = {
+            "projectId": project.projectId,
+            "currency": project.currency,
+            "totalBudget": project.totalBudget,
+            "teachLead": project.teachLead,
+            "tester": project.tester,
+            "startDate": project.startDate,
+            "deadlineDate": project.deadlineDate,
+            "endDate": project.endDate,
+            "status": project.status,
+            "approvedBy": project.approvedBy,
+            "userId": project.userId,
+            "bidId": project.bidId,
+            "developers": [developer.id for developer in project.developers],
+            "created_at": project.created_at,
+            "updated_at": project.updated_at
+        }
+
+        project = Project(**project_data)
         db.session.add(project)
         db.session.commit()
+
+        # After committing the project, we update the bidding
         if project:
             bidding.projectId = project.projectId
             bidding.status = 'approved'
+            bidding.approvedBy = approvedBy  # Track who approved the bidding
             db.session.commit()
-            return jsonify({"message": "Bidding approved successfully"}), 200
+
+        return jsonify({"message": "Bidding approved successfully"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while approving the bidding.", "details": str(e)}), 500

@@ -85,3 +85,31 @@ def verifyJWTToken(allowed_user_types):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def check_permissions(required_permissions):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            user = getattr(request, 'user', None)  # Get the user object from the request
+            if not user:
+                return jsonify({'error': 'User not authenticated'}), 401
+            
+            # Ensure role and permissions are accessible
+            role = getattr(user, 'role', None)
+            if not role or not hasattr(role, 'permissions'):
+                return jsonify({'error': 'User role or permissions not found'}), 403
+
+            # print("User Permissions:", role.permissions)  # Debugging output
+
+            # Extract slugs from Permission objects
+            user_permissions = [perm.slug for perm in role.permissions]
+
+            # Check if the user has any of the required permissions
+            if any(perm in user_permissions for perm in required_permissions):
+                return func(*args, **kwargs)
+
+            # If no permissions match, deny access
+            return jsonify({'error': 'Access forbidden: Missing required permissions'}), 403
+        return wrapper
+    return decorator
