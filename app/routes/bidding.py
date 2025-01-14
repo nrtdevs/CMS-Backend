@@ -35,26 +35,17 @@ biddingSchema = {
 
 approvedSchema = {
     'bidId': {'type': 'integer', 'required': True},    
-    'teachLead': {
-        'type': 'list',
-        'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
-    },
-    'developer_id': {
+    'techLeadId': {'type': 'integer', 'required': True},
+    'developerIds': {
         'type': 'list',
         'schema': {'type': 'integer'},
         'required': False
-    },
-    'tester': {
-        'type': 'list',
-        'schema': {'type': 'string', 'minlength': 1, 'maxlength': 80},
-        'required': True
     },
     'currency': {'type': 'string', 'maxlength': 80, 'required': False},
     'totalBudget': {'type': 'integer', 'required': False},
     'startDate': {'type': 'string', 'required': True},
     'deadlineDate': {'type': 'string', 'required': True},
-    'approvedBy': {'type': 'integer', 'required': True},
+    'approvedById': {'type': 'integer', 'required': True},
 }
 
 validator = Validator(biddingSchema)
@@ -319,58 +310,52 @@ def approve_bidding():
         data['deadlineDate'] = datetime.strptime(data['deadlineDate'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"error": "Invalid startDate or deadlineDate format. Use YYYY-MM-DD."}), 400
+    
     bidId = data.get('bidId')
-    approvedBy = data.get('approvedBy')
+    approvedById = data.get('approvedById')
+    techLeadId = data.get('techLeadId')
+    startDate = data['startDate']
+    deadlineDate = data['deadlineDate']
+    currency = data['currency']
+    totalBudget = data['totalBudget']
+    developer_ids = data.get('developerIds', [])
+    developerData = []
+
     bidding = Bidding.query.filter_by(bidId=bidId).first()
+    techLead = User.query.filter_by(id=techLeadId).first()
+    approvedBy = User.query.filter_by(id=approvedById).first()
+    
     if not bidding:
         return jsonify({'error': 'Bidding not found'}), 404
     if bidding.status == 'approved':
         return jsonify({'error': 'Bidding already approved'}), 400
-    if approvedBy != bidding.userId and approvedBy != 1:
+    
+    userData = User.query.filter_by(id=bidding.userId).first()
+    
+
+    if approvedById != bidding.userId and approvedById != 1:
         return jsonify({'error': 'You are not authorized to approve this bidding'}), 403
     
-    
-    
-    
-    # Developer and tester assignment
-    developer_ids = data.get('developerIds', [])
-    tester_ids = data.get('testerIds', [])
-    
-    # Handle developer assignment if provided
+    if not techLead:
+        return jsonify({'error': 'TechLead not found'}), 404
+        
     if developer_ids:
         developers = User.query.filter(User.id.in_(developer_ids)).all()
         if len(developers) != len(developer_ids):
-            return jsonify({'error': 'Some developer IDs are invalid'}), 404
-        for developer in developers:
-            # Here we should append developers to the project (if a project exists)
-            project.developers.append(developer)
-    
-    # Handle tester assignment if provided
-    if tester_ids:
-        testers = User.query.filter(User.id.in_(tester_ids)).all()
-        if len(testers) != len(tester_ids):
-            return jsonify({'error': 'Some tester IDs are invalid'}), 404
-        for tester in testers:
-            project.testers.append(tester)
+            missing_devs = [dev_id for dev_id in developer_ids if dev_id not in [dev.id for dev in developers]]
+            return jsonify({'error': f"Some developer IDs are invalid: {missing_devs}"}), 404
+        developerData = developers
 
-    # Create and commit project data
     try:
         project_data = {
-            "projectId": project.projectId,
-            "currency": project.currency,
-            "totalBudget": project.totalBudget,
-            "teachLead": project.teachLead,
-            "tester": project.tester,
-            "startDate": project.startDate,
-            "deadlineDate": project.deadlineDate,
-            "endDate": project.endDate,
-            "status": project.status,
-            "approvedBy": project.approvedBy,
-            "userId": project.userId,
-            "bidId": project.bidId,
-            "developers": [developer.id for developer in project.developers],
-            "created_at": project.created_at,
-            "updated_at": project.updated_at
+            "currency": currency,
+            "totalBudget": totalBudget,
+            "techLeadId": techLeadId,
+            "assignedById": approvedBy.id,
+            "startDate": startDate,
+            "deadlineDate": deadlineDate,
+            "userId": userData.id,
+            "bidId": bidId,
         }
 
         project = Project(**project_data)
@@ -381,8 +366,12 @@ def approve_bidding():
         if project:
             bidding.projectId = project.projectId
             bidding.status = 'approved'
-            bidding.approvedBy = approvedBy  # Track who approved the bidding
+            bidding.approvedBy = approvedBy.id
             db.session.commit()
+        # Add developers to the project
+        for developer in developerData:
+            project.developers.append(developer)  # Assuming many-to-many relationship 
+        db.session.commit()
 
         return jsonify({"message": "Bidding approved successfully"}), 200
     except Exception as e:
