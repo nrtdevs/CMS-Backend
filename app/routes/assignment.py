@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.assignment import Assignment, db
+from app.models.project import Project
 from app.models import User
 from cerberus import Validator
 from .logs import addLogsActivity
@@ -29,15 +30,27 @@ assignmentSchema = {
 validator = Validator(assignmentSchema)
 
 # Fetch all assignments
-@assig_bp.route('/list', methods=['GET'])
-def get_assignment_list():
+@assig_bp.route('/listByProjectId/<int:projectId>', methods=['GET'])
+def get_assignment_list(projectId):
     try:
-        assignments = Assignment.query.all()
+        # Fetch project data
+        project_data = Project.query.filter_by(projectId=projectId).first()
         
+
+        if not project_data:
+            return jsonify({'error': 'Project not found'}), 404
+
+        # Include detailed project information
+        project_details = {
+            "projectId": project_data.projectId,
+            "projectName": project_data.bidding.projectName if project_data.bidding else None,
+            "status": project_data.status,
+        }
+
         # Serialize assignments with related details
-        result = []
-        for assignment in assignments:
-            result.append({
+        assignments_data = []
+        for assignment in project_data.assignments_list:
+            assignments_data.append({
                 "id": assignment.id,
                 "title": assignment.title,
                 "desc": assignment.desc,
@@ -49,9 +62,9 @@ def get_assignment_list():
                 
                 # Including related details
                 "project_details": {
-                    "id": assignment.project.projectId,
-                    "name": assignment.project.bidding.projectName,  # Add more fields as necessary
-                    "status": assignment.project.status,
+                    "projectId": assignment.project.projectId,
+                    "name": assignment.project.projectName if assignment.project else None,
+                    "status": assignment.project.status if assignment.project else None,
                 } if assignment.project else None,
                 "developer_details": {
                     "id": assignment.developer.id,
@@ -64,10 +77,15 @@ def get_assignment_list():
                     "email": assignment.assigner.email,
                 } if assignment.assigner else None
             })
-        
-        return jsonify({"success": True, "data": result}), 200
+
+        return jsonify({
+            "success": True,
+            "projectDetails": project_details,
+            "assignments": assignments_data
+        }), 200
+
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
 # Create a new assignment
 @assig_bp.route('/create', methods=['POST'])

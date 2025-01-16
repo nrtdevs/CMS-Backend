@@ -7,7 +7,7 @@ from datetime import datetime
 from .token import verifyJWTToken
 from app.models.user import User, db
 from app.models.project import Project, db
-from app.models.assignment import Assignment
+from app.models.role import Role
 
 biddings_bp = Blueprint('bidding_routes', __name__)
 
@@ -28,7 +28,6 @@ biddingSchema = {
     'clientLocation': {'type': 'string', 'maxlength': 120, 'required': False},
     'remarks': {'type': 'string', 'maxlength': 500, 'required': False}, 
     'commission': {'type': 'boolean', 'required': True}, 
-    'approvedBy':{'type': 'integer', 'required':True}, 
 
   
 }
@@ -63,7 +62,6 @@ def create_bidding():
         data['bidDate'] = datetime.strptime(data['bidDate'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"error": "Invalid bidDate format. Use YYYY-MM-DD."}), 400
-    data['approvedBy'] = data.get('approvedBy')
     
     userId = data.get('userId')
     user = User.query.filter_by(id=userId,status=True).first()
@@ -106,7 +104,7 @@ def create_bidding():
             "user_id": user_data,
             "commission": bidding.commission,
             "project_id":project_data,
-            "approvedBy": bidding.approvedBy,
+            # "approvedBy": bidding.approvedBy,
         }
     
         return jsonify({"message": "Bidding created successfully", "data": bidding_data}), 200
@@ -135,21 +133,18 @@ def get_bidding(bidId):
         "id": bidding.user.id,
         "firstName": bidding.user.firstName,
         "lastName": bidding.user.lastName,
-        "role": str(bidding.user.role),
+        "role": bidding.user.role.id,
     } if bidding.user else None
 
     project_data = {
         "projectId": bidding.project.projectId,
-        "frontDev": bidding.project.frontDev,
-        "backDev": bidding.project.frontDev,
-        "teachLead": bidding.project.teachLead,
-        "tester": bidding.project.tester,
+        # "tester": bidding.project.tester,
         "status": bidding.project.status,
         "currency": bidding.project.currency,
         "totalBudget": bidding.project.totalBudget,
         "startDate": bidding.project.startDate,
         "deadlineDate": bidding.project.deadlineDate,
-        "approvedBy": bidding.project.approvedBy,
+        "assignedById": bidding.project.assignedById,
         "created_at" : bidding.project.created_at
    
     } if bidding.project else None
@@ -256,7 +251,7 @@ def get_biddings_by_user(userId):
             "currency": bidding.currency,
             "bidAmount": bidding.bidAmount,
             "platform": bidding.platform,
-            "bidDate": bidding.bidDate,
+            "bidDate": bidding.bidDate.strftime("%Y-%m-%d") if bidding.bidDate else None,
             "status": bidding.status,
             "clientName": bidding.clientName,
             "clientEmail": bidding.clientEmail,
@@ -264,7 +259,20 @@ def get_biddings_by_user(userId):
             "clientCompany": bidding.clientCompany,
             "clientLocation": bidding.clientLocation,
             "remarks": bidding.remarks,
+            "user": {
+                "userId": bidding.user.id if bidding.user else None,
+                "firstName": bidding.user.firstName if bidding.user else None,
+                "lastName": bidding.user.lastName if bidding.user else None,                
+                "userEmail": bidding.user.email if bidding.user else None,
+            },
+            "project": {
+                "projectId": bidding.project.projectId if bidding.project else None,
+                "startDate": bidding.project.startDate.strftime("%Y-%m-%d") if bidding.project and bidding.project.startDate else None,
+                "deadlineDate": bidding.project.deadlineDate.strftime("%Y-%m-%d") if bidding.project and bidding.project.deadlineDate else None,
+                "status": bidding.project.status if bidding.project else None,
+                }
             }
+        
         for bidding in paginated_biddings.items
     ]
 
@@ -320,6 +328,7 @@ def approve_bidding():
     totalBudget = data['totalBudget']
     developer_ids = data.get('developerIds', [])
     developerData = []
+
 
     bidding = Bidding.query.filter_by(bidId=bidId).first()
     techLead = User.query.filter_by(id=techLeadId).first()

@@ -12,6 +12,7 @@ class Project(db.Model):
     __tablename__ = 'projects'
     # Unique identifier for the project
     projectId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    projectName = db.Column(db.String(100))  # Ensure this exists
     currency= db.Column(db.String(80), nullable=True)
     totalBudget = db.Column(db.Integer, nullable=True)
     startDate = db.Column(db.Date, nullable=True)
