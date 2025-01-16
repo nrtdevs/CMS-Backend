@@ -28,9 +28,8 @@ biddingSchema = {
     'clientLocation': {'type': 'string', 'maxlength': 120, 'required': False},
     'remarks': {'type': 'string', 'maxlength': 500, 'required': False}, 
     'commission': {'type': 'boolean', 'required': True}, 
-    'approvedBy':{'type': 'integer', 'required':True}, 
 
-  
+
 }
 
 approvedSchema = {
@@ -63,7 +62,7 @@ def create_bidding():
         data['bidDate'] = datetime.strptime(data['bidDate'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"error": "Invalid bidDate format. Use YYYY-MM-DD."}), 400
-    data['approvedBy'] = data.get('approvedBy')
+
     
     userId = data.get('userId')
     user = User.query.filter_by(id=userId,status=True).first()
