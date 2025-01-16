@@ -1,6 +1,7 @@
 from app.extensions import db  # Import db from extensions
 from datetime import datetime
 import enum
+from .team import team_users
 class UserTypeEnum(enum.Enum):
     user = "user"
     master_admin = "master_admin"
@@ -39,3 +40,4 @@ class User(db.Model):
         secondary='project_developers',
         back_populates='developers'
     )
+    teams = db.relationship('Team', secondary=team_users, back_populates='developers')
