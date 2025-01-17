@@ -36,5 +36,5 @@ class Bidding(db.Model):
     
     commission = db.Column(db.Boolean, nullable=False)
 
-    approvedBy = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
+    approvedBy = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) 
     approved = db.relationship('User', foreign_keys=[approvedBy], backref='approved_biddings', lazy=True)    
