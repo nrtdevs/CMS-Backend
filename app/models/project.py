@@ -24,9 +24,6 @@ class Project(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = db.Column(db.DateTime, nullable=True) 
    
-    
-   
-    
     # new
     assignments_list = db.relationship(
         "Assignment",
@@ -57,6 +54,13 @@ class Project(db.Model):
     bidId = db.Column(db.Integer, db.ForeignKey('biddings.bidId'), nullable=False)
     bidding = db.relationship('Bidding', backref='projects', lazy=True, 
                               foreign_keys=[bidId])
+    
+     # Team relationship
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.team_id'), nullable=True)
+    team = db.relationship('Team', back_populates='projects')
+    
+    
+    # teams = db.relationship('Team', back_populates='project')
     
         #developerIds relation
     # developerIds = db.Column(db.Array, db.ForeignKey('users.id'), nullable=False) 

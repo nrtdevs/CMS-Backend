@@ -7,8 +7,6 @@ from datetime import datetime
 from .token import verifyJWTToken
 from app.models.user import User, db
 from app.models.project import Project, db
-from app.models.role import Role
-from app.models.team import Team
 
 
 biddings_bp = Blueprint('bidding_routes', __name__)
@@ -351,20 +349,12 @@ def approve_bidding():
     if not techLead:
         return jsonify({'error': 'TechLead not found'}), 404
         
-    # Process developer IDs
-    if isinstance(developer_ids, str):
-        team = Team.query.filter_by(team_id=developer_ids).first()
-        if not team:
-            return jsonify({'error': f'Team with ID {developer_ids} not found'}), 404
-        developerData = team.developers
-    elif isinstance(developer_ids, list):
+    if developer_ids:
         developers = User.query.filter(User.id.in_(developer_ids)).all()
         if len(developers) != len(developer_ids):
             missing_devs = [dev_id for dev_id in developer_ids if dev_id not in [dev.id for dev in developers]]
             return jsonify({'error': f"Some developer IDs are invalid: {missing_devs}"}), 404
         developerData = developers
-    else:
-        return jsonify({'error': 'Invalid developerIds format'}), 400
 
     try:
         project_data = {

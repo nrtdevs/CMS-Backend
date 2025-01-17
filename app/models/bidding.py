@@ -33,7 +33,6 @@ class Bidding(db.Model):
     project = db.relationship('Project', backref='biddings', lazy=True, 
                               foreign_keys=[projectId])
     
-    
     commission = db.Column(db.Boolean, nullable=False)
 
     approvedBy = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) 
