@@ -42,6 +42,7 @@ approvedSchema = {
         'schema': {'type': 'integer'},
         'required': False
     },
+    "teamId":{'type': 'integer', 'required': False},
     'currency': {'type': 'string', 'maxlength': 80, 'required': False},
     'totalBudget': {'type': 'integer', 'required': False},
     'startDate': {'type': 'string', 'required': True},
