@@ -7,6 +7,8 @@ from datetime import datetime
 from .token import verifyJWTToken
 from app.models.user import User, db
 from app.models.project import Project, db
+from app.models.role import Role
+from app.models.team import Team
 
 
 biddings_bp = Blueprint('bidding_routes', __name__)
