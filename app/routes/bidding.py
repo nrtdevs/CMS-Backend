@@ -360,6 +360,7 @@ def approve_bidding():
 
     try:
         project_data = {
+            "projectName":bidding.projectName,
             "currency": currency,
             "totalBudget": totalBudget,
             "techLeadId": techLeadId,
