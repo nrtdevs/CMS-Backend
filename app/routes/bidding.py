@@ -64,6 +64,7 @@ def create_bidding():
         data['bidDate'] = datetime.strptime(data['bidDate'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"error": "Invalid bidDate format. Use YYYY-MM-DD."}), 400
+
     
     userId = data.get('userId')
     user = User.query.filter_by(id=userId,status=True).first()
