@@ -9,6 +9,8 @@ from app.models.user import User, db
 from app.models.project import Project, db
 from app.models.role import Role
 from app.models.team import Team
+from .file_uploader import handle_file_upload
+import os
 
 
 biddings_bp = Blueprint('bidding_routes', __name__)
@@ -49,6 +51,71 @@ approvedSchema = {
     'deadlineDate': {'type': 'string', 'required': True},
     'approvedById': {'type': 'integer', 'required': True},
 }
+def auto_convert(data, schema):
+    """
+    Automatically converts and validates data based on the provided schema.
+    
+    Args:
+        data (dict): The input data to be validated and converted.
+        schema (dict): The schema defining the expected types and requirements.
+    
+    Returns:
+        dict: Converted and validated data.
+    
+    Raises:
+        ValueError: If a field is invalid or conversion fails.
+    """
+    converted_data = {}
+
+    for key, field in schema.items():
+        if field.get('required') and key not in data:
+            raise ValueError(f"'{key}' is required but not provided.")
+
+        if key not in data:
+            # Skip if the field is not required and not in the data
+            continue
+
+        value = data[key]
+
+        # Convert based on the type defined in the schema
+        if field['type'] == 'integer':
+            try:
+                converted_data[key] = int(value)
+            except ValueError:
+                raise ValueError(f"'{key}' should be an integer. Received: {value}")
+
+        elif field['type'] == 'string':
+            if 'maxlength' in field and len(value) > field['maxlength']:
+                raise ValueError(f"'{key}' exceeds the maximum length of {field['maxlength']}.")
+            converted_data[key] = str(value)
+
+        elif field['type'] == 'list':
+            if not isinstance(value, list):
+                # Convert single integers or comma-separated strings into a list
+                if isinstance(value, int):
+                    value = [value]
+                elif isinstance(value, str):
+                    value = value.split(',')
+                else:
+                    raise ValueError(f"'{key}' should be a list. Received: {value}")
+            if 'schema' in field and field['schema']['type'] == 'integer':
+                try:
+                    converted_data[key] = [int(item) for item in value]
+                except ValueError:
+                    raise ValueError(f"'{key}' should be a list of integers. Received: {value}")
+            else:
+                converted_data[key] = value
+
+        elif field['type'] == 'date':
+            try:
+                converted_data[key] = datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                raise ValueError(f"'{key}' should be a date in YYYY-MM-DD format. Received: {value}")
+
+        else:
+            raise ValueError(f"Unsupported type '{field['type']}' in schema for '{key}'.")
+
+    return converted_data
 
 validator = Validator(biddingSchema)
 approve_validator = Validator(approvedSchema)
@@ -313,49 +380,60 @@ def update_bidding(bidId):
 # Approve Bidding
 @biddings_bp.route('/approve', methods=['POST'])
 @verifyJWTToken(['master_admin','user'])
-def approve_bidding():
-    data = request.get_json()
-    if not approve_validator.validate(data):
-        return jsonify({"errors": approve_validator.errors}), 400
-    try:
-        data['startDate'] = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
-        data['deadlineDate'] = datetime.strptime(data['deadlineDate'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({"error": "Invalid startDate or deadlineDate format. Use YYYY-MM-DD."}), 400
-    
-    bidId = data.get('bidId')
-    approvedById = data.get('approvedById')
-    techLeadId = data.get('techLeadId')
-    startDate = data['startDate']
-    deadlineDate = data['deadlineDate']
-    currency = data['currency']
-    totalBudget = data['totalBudget']
-    developer_ids = data.get('developerIds', [])
-    developerData = []
+@handle_file_upload(allowed_extensions={'pdf'}, upload_folder='uploads')
 
+def approve_bidding(file_path, file_name):
+    
+    data = request.form.to_dict()
+    try:
+        validated_data = auto_convert(data, approvedSchema)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+
+    # Extract validated data
+    bidId = validated_data.get('bidId')
+    approvedById = validated_data.get('approvedById')
+    techLeadId = validated_data.get('techLeadId')
+    startDate = validated_data.get('startDate')
+    deadlineDate = validated_data.get('deadlineDate')
+    currency = validated_data.get('currency')
+    totalBudget = validated_data.get('totalBudget')
+    developer_ids = validated_data.get('developerIds', [])
+    team_id = validated_data.get('teamId')
+    developerData = []
 
     bidding = Bidding.query.filter_by(bidId=bidId).first()
     techLead = User.query.filter_by(id=techLeadId).first()
     approvedBy = User.query.filter_by(id=approvedById).first()
+    userData = User.query.filter_by(id=bidding.userId).first()
+    
     
     if not bidding:
         return jsonify({'error': 'Bidding not found'}), 404
     if bidding.status == 'approved':
-        return jsonify({'error': 'Bidding already approved'}), 400
-    
-    userData = User.query.filter_by(id=bidding.userId).first()
-    
+        return jsonify({'error': 'Bidding already approved'}), 400    
 
-    if approvedById != bidding.userId and approvedById != 1:
+    if approvedById != bidding.userId and approvedById == 1:
         return jsonify({'error': 'You are not authorized to approve this bidding'}), 403
     
     if not techLead:
         return jsonify({'error': 'TechLead not found'}), 404
         
+    if team_id:
+        team = Team.query.filter_by(team_id=team_id).first()
+        if not team:
+            return jsonify({'error': f"Team with ID {team_id} not found"}), 404
+        
+        team_developer_ids = [developer.id for developer in team.developers]
+        developer_ids = team_developer_ids
+ 
+        
     if developer_ids:
         developers = User.query.filter(User.id.in_(developer_ids)).all()
         if len(developers) != len(developer_ids):
-            missing_devs = [dev_id for dev_id in developer_ids if dev_id not in [dev.id for dev in developers]]
+            missing_devs = [dev_id for dev_id in developer_ids if dev_id not in [dev.id for dev in team_developer_ids]]
             return jsonify({'error': f"Some developer IDs are invalid: {missing_devs}"}), 404
         developerData = developers
 
@@ -387,7 +465,7 @@ def approve_bidding():
             project.developers.append(developer)  # Assuming many-to-many relationship 
         db.session.commit()
 
-        return jsonify({"message": "Bidding approved successfully"}), 200
+        return jsonify({"message": "Bidding approved successfully", "file_path": file_path, "file_name": file_name}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while approving the bidding.", "details": str(e)}), 500
