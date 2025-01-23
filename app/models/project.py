@@ -12,7 +12,7 @@ class Project(db.Model):
     __tablename__ = 'projects'
     # Unique identifier for the project
     projectId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    projectName = db.Column(db.String(100))  # Ensure this exists
+    projectName = db.Column(db.String(255),nullable=True)
     currency= db.Column(db.String(80), nullable=True)
     totalBudget = db.Column(db.Integer, nullable=True)
     startDate = db.Column(db.Date, nullable=True)
@@ -56,11 +56,13 @@ class Project(db.Model):
                               foreign_keys=[bidId])
     
      # Team relationship
-    team_id = db.Column(db.Integer, db.ForeignKey('teams.team_id'), nullable=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.teamId'), nullable=True)
     team = db.relationship('Team', back_populates='projects')
     
     
-    # teams = db.relationship('Team', back_populates='project')
+    # Relationship
+    payments = db.relationship('Payment', back_populates='project', cascade='all, delete-orphan')  # Relationship to Payment model
+
     
         #developerIds relation
     # developerIds = db.Column(db.Array, db.ForeignKey('users.id'), nullable=False) 

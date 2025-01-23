@@ -8,6 +8,8 @@ from .assignment import assig_bp
 from .project import projects_bp
 from .team import teams_bp
 from .dashboard import dashboard_bp
+from .payment import payments_bp
+
 def register_routes(app):
     app.register_blueprint(users_bp, url_prefix='/api/users')  
     app.register_blueprint(auth_bp, url_prefix='/api/auth')  
@@ -19,5 +21,6 @@ def register_routes(app):
     app.register_blueprint(projects_bp, url_prefix='/api/project')
     app.register_blueprint(teams_bp, url_prefix='/api/team')
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
+    app.register_blueprint(payments_bp, url_prefix='/api/payment')
     
     
