@@ -1,5 +1,7 @@
 from app.extensions import db
 from datetime import datetime
+from app.models.remarks import assignment_remarks  # Import the association table from the remark model
+
 
 class Assignment(db.Model):
     __tablename__ = 'assignments'
@@ -36,3 +38,7 @@ class Assignment(db.Model):
     # Assigner relation
     assignedById = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # User who assigned the task
     assigner = db.relationship('User', foreign_keys=[assignedById], backref='assigner_assignments', lazy=True)
+    
+    
+    # Many-to-many relationship with the Remark model using the association table
+    remarks = db.relationship('Remark', secondary=assignment_remarks, back_populates='assignments')

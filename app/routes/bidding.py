@@ -148,7 +148,7 @@ def create_bidding():
             "id": bidding.user.id,
             "firstName": bidding.user.firstName,
             "lastName": bidding.user.lastName,
-            "role": str(bidding.user.role),
+            "role": bidding.user.role,
         } if bidding.user else None
 
         project_data = {
@@ -415,14 +415,14 @@ def approve_bidding(file_path, file_name):
     if bidding.status == 'approved':
         return jsonify({'error': 'Bidding already approved'}), 400    
 
-    if approvedById != bidding.userId and approvedById == 1:
+    if approvedById != bidding.userId and approvedById != 1:
         return jsonify({'error': 'You are not authorized to approve this bidding'}), 403
     
     if not techLead:
         return jsonify({'error': 'TechLead not found'}), 404
         
     if team_id:
-        team = Team.query.filter_by(team_id=team_id).first()
+        team = Team.query.filter_by(teamId=team_id).first()
         if not team:
             return jsonify({'error': f"Team with ID {team_id} not found"}), 404
         
