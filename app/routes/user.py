@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from flask import Flask
 from flask import Blueprint, request, jsonify
 from app.models.user import User, db
@@ -20,22 +21,24 @@ registerSchema = {
     'countryCode': {'type': 'string', 'minlength': 2, 'maxlength': 50, 'required': True},
     'mobileNo': {'type': 'integer', 'required': True},
     'empID': {'type': 'string', 'required': True},
-    'role_id': {'type': 'integer','required': True},
+    'role_id': {'type': 'integer', 'required': True},
 }
 
 validator = Validator(registerSchema)
 # CREATE user
+
+
 @users_bp.route('/register', methods=['POST'])
 @verifyJWTToken(['master_admin'])
 def create_user():
     data = request.get_json()
     if not validator.validate(data):
-        addLogsActivity(request,'Register','registration unsuccessfully')
+        addLogsActivity(request, 'Register', 'registration unsuccessfully')
         return jsonify({"errors": validator.errors}), 400
 
     data['password'] = generate_password_hash(data['password'])
     try:
-        new_user = User(**data) 
+        new_user = User(**data)
         db.session.add(new_user)
         db.session.commit()
         user_data = {
@@ -45,25 +48,54 @@ def create_user():
             "email": new_user.email,
             "mobileNo": new_user.mobileNo,
         }
-        addLogsActivity(request,'Register','registration successfully')
-        
-        return jsonify({"message": "User registered successfully", "data": user_data}), 200 
+        addLogsActivity(request, 'Register', 'registration successfully')
+
+        return jsonify({"message": "User registered successfully", "data": user_data}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "An error occurred while creating the user.", "details": str(e)}), 500
+
 
 # READ all users for master_admin
 @users_bp.route('/all', methods=['GET'])
 @verifyJWTToken(['master_admin'])
 def get_users():
-    # Get pagination parameters from the request
-    page = request.args.get('page', default=1, type=int)  # Default page is 1
-    per_page = request.args.get('per_page', default=10, type=int)  # Default items per page is 10
+    # Get the search value from the request
+    search_val = request.args.get('searchVal', default=None, type=str)
+    role_ids = request.args.get('roleIds', default=None, type=str)
 
-    # Fetch paginated users from the database
-    paginated_users = User.query.paginate(page=page, per_page=per_page, error_out=False)
+    # Start building the query
+    query = User.query
 
-    # Serialize the user data into dictionaries
+    # If a search value exists, filter across multiple fields
+    if search_val:
+        search_val = search_val.strip().lower()  # Normalize input (trim and lowercase)
+        search_filter = or_(
+            User.firstName.ilike(f'%{search_val}%'),
+            User.lastName.ilike(f'%{search_val}%'),
+            User.email.ilike(f'%{search_val}%'),
+            User.mobileNo.ilike(f'%{search_val}%')
+        )
+        query = query.filter(search_filter)
+
+    # Apply role filtering if role_ids exist
+    if role_ids:
+        role_ids_list = [int(id) for id in role_ids.split(',')]
+        query = query.filter(User.role_id.in_(role_ids_list))
+
+    # Debugging: Print the SQL query for troubleshooting
+    # print("Generated SQL Query:", str(query))
+
+    # Fetch users based on the query
+    users = query.all()
+    if not users:
+        return jsonify({
+            "message": "No data found matching the search criteria.",
+            "total_items": 0
+        }), 404  # 404 Not Found status code
+
+
+    # Serialize user data into dictionaries
     users_list = [
         {
             "id": user.id,
@@ -77,19 +109,16 @@ def get_users():
             "created_at": user.created_at,
             "updated_at": user.updated_at,
         }
-        for user in paginated_users.items
+        for user in users
     ]
 
+    # Return the response
     return jsonify({
         "message": "Users fetched successfully",
         "data": users_list,
-        "pagination": {
-            "page": paginated_users.page,
-            "per_page": paginated_users.per_page,
-            "total_pages": paginated_users.pages,
-            "total_items": paginated_users.total,
-        }
+        "total_items": len(users_list)
     }), 200
+
 
 @users_bp.route('/<int:id>', methods=['GET'])
 @verifyJWTToken(['master_admin', 'user'])
@@ -99,12 +128,12 @@ def get_user(id):
     user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
     role_data = {
-      "id": user.role.id,
-       "name": user.role.name,
-       "permissions": [
-        {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
+        "id": user.role.id,
+        "name": user.role.name,
+        "permissions": [
+            {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
         ] if user.role.permissions else None
     } if user.role else None
     user_data = {
@@ -123,6 +152,8 @@ def get_user(id):
     return jsonify({"message": "User fetched successfully", "data": user_data}), 200
 
 # UPDATE user
+
+
 @users_bp.route('/users/<int:id>', methods=['PUT'])
 @verifyJWTToken(['master_admin'])
 def update_user(id):
@@ -146,10 +177,14 @@ def update_user(id):
     user.countryCode = data.get('countryCode', user.countryCode)
     user.mobileNo = data.get('mobileNo', user.mobileNo)
     user.email = data.get('email', user.email)
-    user.password = data.get('password', user.password)  # Be cautious about updating password
-    user.role = data.get('role', user.role)  # Optional: update role if provided
-    user.status = data.get('status', user.status)  # Optional: update status if provided
-    user.is_blocked = data.get('is_blocked', user.is_blocked)  # Optional: update block status
+    # Be cautious about updating password
+    user.password = data.get('password', user.password)
+    # Optional: update role if provided
+    user.role = data.get('role', user.role)
+    # Optional: update status if provided
+    user.status = data.get('status', user.status)
+    # Optional: update block status
+    user.is_blocked = data.get('is_blocked', user.is_blocked)
 
     # Commit the changes to the database
     db.session.commit()
@@ -172,6 +207,8 @@ def update_user(id):
     return jsonify({"message": "User updated successfully", "data": user_data}), 200
 
 # DELETE user
+
+
 @users_bp.route('/users/<int:id>', methods=['DELETE'])
 def delete_user(id):
     user = User.query.filter_by(id=id).first()
@@ -183,6 +220,8 @@ def delete_user(id):
     return jsonify({'message': 'User deleted'}), 200
 
 # UPDATE user
+
+
 @users_bp.route('/block/<int:id>', methods=['POST'])
 @verifyJWTToken(['master_admin'])
 def block_user(id):
@@ -199,11 +238,10 @@ def block_user(id):
     # If user not found, return a 404 error
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    if user.userType =='master_admin':
+    if user.userType == 'master_admin':
         return jsonify({'error': 'Master admin can not be block'}), 404
-    if user.is_blocked==True:
+    if user.is_blocked == True:
         return jsonify({'error': 'User Already Blocked'}), 404
-
 
     user.status = data.get('status', False)
     user.is_blocked = data.get('is_blocked', True)
@@ -211,4 +249,3 @@ def block_user(id):
     db.session.commit()
 
     return jsonify({"message": "User blocked successfully"}), 200
-

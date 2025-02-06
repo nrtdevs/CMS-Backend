@@ -84,23 +84,92 @@ def get_project(projectId):
     return jsonify({"message": "Project fetched successfully", "data": project_data}), 200
 
 
+projects_bp = Blueprint('projects', __name__)
+@projects_bp.route('/list', methods=['GET'])
+@verifyJWTToken(['master_admin', 'user'])  # Ensures the user is authenticated with specific roles
+def get_all_projects():
+    """Fetch all projects with optional filters, pagination, and relationships."""
 
-# @projects_bp.route('/project/<int:projectId>', methods=['PUT'])
-# @verifyJWTToken(['master_admin'])
-# def update_project(projectId):
-#     data = request.get_json()
-#     if not Edit_validator.validate(data):
-#         return jsonify({"errors": Edit_validator.errors}), 400
+    # Get search parameters
+    project_name = request.args.get('projectName', default=None, type=str)
+    status = request.args.get('status', default=None, type=str)
+
+    # Validate project_name if required
+    if project_name is not None and not project_name.strip():
+        return jsonify({"error": "Project name cannot be empty"}), 400
+
+    # Pagination parameters
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=10, type=int)
+
+    # Base query with relationships loaded
+    query = db.session.query(Project).options(
+        joinedload(Project.developers),
+        joinedload(Project.techLead)
+    )
+
+    # Apply filters if provided
+    if project_name:
+        query = query.filter(Project.projectName.ilike(f"%{project_name}%"))
+    if status:
+        query = query.filter(Project.status.ilike(f"%{status}%"))
+
+    # Paginate results
+    paginated_projects = query.paginate(page=page, per_page=per_page, error_out=False)
     
-#     project= Project.query.filter_by(projectId=projectId).first()
+    
+    # Serialize the project data
+    projects_data = [
+        {
+            "projectId": project.projectId,
+            "projectName": project.projectName,
+            "currency": project.currency,
+            "totalBudget": project.totalBudget,
+            "startDate": project.startDate,
+            "deadlineDate": project.deadlineDate,
+            "status": project.status,
+            "created_at": project.created_at,
+            "assignments_list": [
+                {
+                    "assignmentId": assignment.id,
+                    "title": assignment.title,
+                    "desc": assignment.desc,
+                    "status": assignment.status,
+                    "created_at": assignment.created_at,
+                    "updated_at": assignment.updated_at,
+                }
+                for assignment in project.assignments_list
+            ],
+            "developers": [
+                {"id": developer.id, "name": f"{developer.firstName} {developer.lastName}"}
+                for developer in project.developers
+            ],
+            "techLead": {
+                "id": project.techLead.id,
+                "name": f"{project.techLead.firstName} {project.techLead.lastName}"
+            } if project.techLead else None,
+        }
+        for project in paginated_projects.items
+    ]
+    
+     # Check if no projects were found
+    if not projects_data:
+        return jsonify({
+        "error": "No projects found. Please refine your search criteria."
+    }), 404
 
-#     if not project:
-#         return jsonify({'error': 'Project not found'}), 404
+    # Return response
+    return jsonify({
+        "message": "Projects fetched successfully",
+        "data": projects_data,
+        "pagination": {
+            "page": paginated_projects.page,
+            "per_page": paginated_projects.per_page,
+            "total_pages": paginated_projects.pages,
+            "total_items": paginated_projects.total,
+        }
+    }), 200
 
-#     # Update fields
-#     for key, value in data.items():
-#         if hasattr(project, key):
-#             setattr(project, key, value)
-#     db.session.commit()
 
-#     return jsonify({"message": "Project updated successfully"}), 200
+
+
