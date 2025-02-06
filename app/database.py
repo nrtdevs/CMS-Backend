@@ -5,6 +5,8 @@ from app.config import Config
 from app.extensions import db, migrate  # Import extensions
 from app.routes import register_routes 
 from app.seeder import seed_permissions, seed_roles, seed_users
+from flask_cors import CORS
+
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 
@@ -17,6 +19,7 @@ def seed_all():
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}})
     app.config.from_object(Config)
 
     # Initialize extensions with the app

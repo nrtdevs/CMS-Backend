@@ -9,3 +9,10 @@ cerberus
 PyJWT
 user-agents
 python-slugify
+flask_cors
+
+
+
+
+
+
