@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models import Team, User, db
 from cerberus import Validator
+from .token import verifyJWTToken
 
 
 teams_bp = Blueprint('teams', __name__)
@@ -22,6 +23,7 @@ team_schema = {
 team_validator = Validator(team_schema)
 
 @teams_bp.route('/create', methods=['POST'])
+@verifyJWTToken(['master_admin','user'])
 def create_team():
     data = request.get_json()
     if not team_validator.validate(data):
@@ -50,10 +52,24 @@ def create_team():
         db.session.rollback()
         return jsonify({"error": "Integrity error occurred", "details": str(e)}), 500
 
-    return jsonify({"message": "Team created successfully", "team_id": new_team.teamId}), 201
+    return jsonify({
+        "message": "Team created successfully",
+        "team": {
+            "teamId": new_team.teamId,
+            "teamName": new_team.teamName,
+            "teamLeadId": new_team.teamLeadId,
+            "status": new_team.status,
+            "description": new_team.description,
+            "techStack": new_team.techStack,
+            "createdById": new_team.createdById,
+            "developer_ids": [dev.id for dev in new_team.developers]
+        }
+    }), 201
+
 
 # Update a Team
 @teams_bp.route('/update/<int:team_id>', methods=['PUT'])
+@verifyJWTToken(['master_admin','user'])
 def update_team(team_id):
     team = Team.query.get(team_id)
     if not team:
@@ -88,28 +104,61 @@ def update_team(team_id):
 
 # Get all teams
 @teams_bp.route('/get_all', methods=['GET'])
+@verifyJWTToken(['master_admin','user'])
 def get_all_teams():
     teams = Team.query.all()
-    return jsonify([team.to_dict() for team in teams]), 200
+    return jsonify({
+        "message": "All Teams Fetched successfully",
+        "teams": [
+            {
+                "teamId": team.teamId,
+                "teamName": team.teamName,
+                "teamLeadId": team.teamLeadId,
+                "status": team.status,
+                "description": team.description,
+                "techStack": team.techStack,
+                "createdById": team.createdById,
+                "developer_ids": [dev.id for dev in team.developers]
+            }
+            for team in teams
+        ]
+    }), 200
+
 
 # Get teams By Id
 @teams_bp.route('/<int:team_id>', methods=['GET'])
+@verifyJWTToken(['master_admin','user'])
 def get_team_by_id(team_id):
+    # Fetch team by ID
     team = Team.query.get(team_id)
-    print(team)
-    user = User.query.get(team_id) if team_id else None
     if not team:
-        return jsonify({"error": 'TEAM_NOT_FOUND'}), 404
+        return jsonify({"error": "TEAM_NOT_FOUND"}), 404
 
-    team_data = team.to_dict()
-    print(team_data)
-    
-    team_data['created_at'] = team.created_at.isoformat()  # 
-    team_data['created_by'] = { "id" :user.id,
-                               "Firstname":user.firstName,
-                               "lastName":user.lastName}
-    team_data['updated_at'] = team.updated_at.isoformat()  # 
-    team_data['developers'] = [developer.to_dict() for developer in team.developers]
+    # Fetch user (creator of the team)
+    user = User.query.get(team.createdById) if team.createdById else None
+
+    # Construct response data
+    team_data = {
+        "teamId": team.teamId,
+        "teamName": team.teamName,
+        "teamLeadId": team.teamLeadId,
+        "status": team.status,
+        "description": team.description,
+        "techStack": team.techStack,
+        "created_at": team.created_at.isoformat() if team.created_at else None,
+        "updated_at": team.updated_at.isoformat() if team.updated_at else None,
+        "created_by": {
+            "id": user.id if user else None,
+            "firstName": user.firstName if user else None,
+            "lastName": user.lastName if user else None
+        },
+        "developers": [
+            {
+                "id": developer.id,
+                "firstName": developer.firstName,
+                "lastName": developer.lastName
+            } for developer in team.developers
+        ]
+    }
 
     return jsonify(team_data), 200
-

@@ -247,15 +247,29 @@ def get_bidding(bidId):
 def get_biddings():
     page = request.args.get('page', default=1, type=int)
     per_page = request.args.get('per_page', default=10, type=int)
+    search_query = request.args.get('search', default='', type=str)
+    status_filter = request.args.get('status', default='', type=str)
 
-    paginated_biddings = (
-        db.session.query(Bidding)
-        .options(
-            joinedload(Bidding.user),  # Eager load the associated User
-            joinedload(Bidding.project)  # Eager load the associated Project
-        )
-        .paginate(page=page, per_page=per_page, error_out=False)
+    query = db.session.query(Bidding).options(
+        joinedload(Bidding.user),
+        joinedload(Bidding.project)
     )
+
+    # Apply search filter if present
+    if search_query:
+        search_filter = f"%{search_query}%"
+        query = query.filter(
+            (Bidding.projectName.ilike(search_filter)) |
+            (Bidding.clientName.ilike(search_filter)) |
+            (Bidding.clientEmail.ilike(search_filter)) |
+            (Bidding.remarks.ilike(search_filter))
+        )
+
+    # Apply status filter if present
+    if status_filter:
+        query = query.filter(Bidding.status == status_filter)
+
+    paginated_biddings = query.paginate(page=page, per_page=per_page, error_out=False)
 
     biddings_list = [
         {
@@ -298,6 +312,64 @@ def get_biddings():
             "total_items": paginated_biddings.total,
         }
     }), 200
+
+
+# @biddings_bp.route('/all', methods=['GET'])
+# @verifyJWTToken(['master_admin'])
+# def get_biddings():
+#     page = request.args.get('page', default=1, type=int)
+#     per_page = request.args.get('per_page', default=10, type=int)
+
+#     paginated_biddings = (
+#         db.session.query(Bidding)
+#         .options(
+#             joinedload(Bidding.user),  # Eager load the associated User
+#             joinedload(Bidding.project)  # Eager load the associated Project
+#         )
+#         .paginate(page=page, per_page=per_page, error_out=False)
+#     )
+
+#     biddings_list = [
+#         {
+#             "bidId": bidding.bidId,
+#             "projectName": bidding.projectName,
+#             "projectDescription": bidding.projectDescription,
+#             "currency": bidding.currency,
+#             "bidAmount": bidding.bidAmount,
+#             "platform": bidding.platform,
+#             "bidDate": bidding.bidDate,
+#             "status": bidding.status,
+#             "clientName": bidding.clientName,
+#             "clientEmail": bidding.clientEmail,
+#             "clientContact": bidding.clientContact,
+#             "clientCompany": bidding.clientCompany,
+#             "clientLocation": bidding.clientLocation,
+#             "remarks": bidding.remarks,
+#             "user": {
+#                 "id": bidding.user.id,
+#                 "firstName": bidding.user.firstName,
+#                 "lastName": bidding.user.lastName,
+#                 "role": str(bidding.user.role),
+#             } if bidding.user else None,
+#             "project": {
+#                 "projectId": bidding.project.projectId,
+#                 "projectName": bidding.project.projectName,
+#                 "status": bidding.project.status,
+#             } if bidding.project else None,
+#         }
+#         for bidding in paginated_biddings.items
+#     ]
+
+#     return jsonify({
+#         "message": "Biddings fetched successfully",
+#         "data": biddings_list,
+#         "pagination": {
+#             "page": paginated_biddings.page,
+#             "per_page": paginated_biddings.per_page,
+#             "total_pages": paginated_biddings.pages,
+#             "total_items": paginated_biddings.total,
+#         }
+#     }), 200
 
 
 @biddings_bp.route('/list/<int:userId>', methods=['GET'])
