@@ -1,14 +1,8 @@
 """Initial migration
 
-<<<<<<<< HEAD:app/migrations/versions/f62f561484f4_initial_migration.py
-Revision ID: f62f561484f4
+Revision ID: 2136e2746926
 Revises: 
-Create Date: 2025-01-16 12:22:36.373586
-========
-Revision ID: 5719f318b810
-Revises: 
-Create Date: 2025-01-16 11:06:42.513908
->>>>>>>> d2010ee6ae9d8a426e3e50df85f9d5d66f2c5229:app/migrations/versions/5719f318b810_initial_migration.py
+Create Date: 2025-02-06 11:37:28.741778
 
 """
 from alembic import op
@@ -16,11 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-<<<<<<<< HEAD:app/migrations/versions/f62f561484f4_initial_migration.py
-revision = 'f62f561484f4'
-========
-revision = '5719f318b810'
->>>>>>>> d2010ee6ae9d8a426e3e50df85f9d5d66f2c5229:app/migrations/versions/5719f318b810_initial_migration.py
+revision = '2136e2746926'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -105,7 +95,7 @@ def upgrade():
     sa.Column('userId', sa.Integer(), nullable=False),
     sa.Column('projectId', sa.Integer(), nullable=True),
     sa.Column('commission', sa.Boolean(), nullable=False),
-    sa.Column('approvedBy', sa.Integer(), nullable=False),
+    sa.Column('approvedBy', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['approvedBy'], ['users.id'], ),
     sa.ForeignKeyConstraint(['projectId'], ['projects.projectId'], use_alter=True),
     sa.ForeignKeyConstraint(['userId'], ['users.id'], ),
@@ -139,15 +129,28 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('remarks',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('userId', sa.Integer(), nullable=False),
+    sa.Column('remark', sa.Text(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['userId'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('teams',
-    sa.Column('team_id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('teamlead_Id', sa.Integer(), nullable=False),
+    sa.Column('teamId', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('teamName', sa.String(length=255), nullable=False),
+    sa.Column('teamLeadId', sa.Integer(), nullable=False),
     sa.Column('status', sa.Boolean(), nullable=True),
+    sa.Column('createdById', sa.Integer(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('techStack', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['teamlead_Id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('team_id')
+    sa.ForeignKeyConstraint(['createdById'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['teamLeadId'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('teamId')
     )
     op.create_table('tokens',
     sa.Column('tokenId', sa.Integer(), nullable=False),
@@ -159,14 +162,15 @@ def upgrade():
     sa.PrimaryKeyConstraint('tokenId')
     )
     op.create_table('Team_developer_id',
-    sa.Column('team_id', sa.Integer(), nullable=False),
+    sa.Column('teamId', sa.Integer(), nullable=False),
     sa.Column('developer_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['developer_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['team_id'], ['teams.team_id'], ),
-    sa.PrimaryKeyConstraint('team_id', 'developer_id')
+    sa.ForeignKeyConstraint(['teamId'], ['teams.teamId'], ),
+    sa.PrimaryKeyConstraint('teamId', 'developer_id')
     )
     op.create_table('projects',
     sa.Column('projectId', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('projectName', sa.String(length=255), nullable=True),
     sa.Column('currency', sa.String(length=80), nullable=True),
     sa.Column('totalBudget', sa.Integer(), nullable=True),
     sa.Column('startDate', sa.Date(), nullable=True),
@@ -183,7 +187,7 @@ def upgrade():
     sa.Column('team_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['assignedById'], ['users.id'], ),
     sa.ForeignKeyConstraint(['bidId'], ['biddings.bidId'], ),
-    sa.ForeignKeyConstraint(['team_id'], ['teams.team_id'], ),
+    sa.ForeignKeyConstraint(['team_id'], ['teams.teamId'], ),
     sa.ForeignKeyConstraint(['techLeadId'], ['users.id'], ),
     sa.ForeignKeyConstraint(['userId'], ['users.id'], ),
     sa.PrimaryKeyConstraint('projectId')
@@ -207,6 +211,28 @@ def upgrade():
     sa.ForeignKeyConstraint(['testerId'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('payments',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('amount', sa.Float(), nullable=False),
+    sa.Column('currency', sa.String(length=10), nullable=False),
+    sa.Column('payment_date', sa.DateTime(), nullable=False),
+    sa.Column('payment_method', sa.String(length=50), nullable=False),
+    sa.Column('transaction_id', sa.String(length=100), nullable=True),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('description', sa.String(length=255), nullable=True),
+    sa.Column('payer_name', sa.String(length=100), nullable=True),
+    sa.Column('payer_email', sa.String(length=100), nullable=True),
+    sa.Column('payment_provider', sa.String(length=50), nullable=True),
+    sa.Column('receipt_url', sa.String(length=255), nullable=True),
+    sa.Column('refunded', sa.Boolean(), nullable=True),
+    sa.Column('refund_date', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('project_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['project_id'], ['projects.projectId'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('project_id', 'transaction_id', name='_project_transaction_uc')
+    )
     op.create_table('project_developers',
     sa.Column('project_id', sa.Integer(), nullable=False),
     sa.Column('developer_id', sa.Integer(), nullable=False),
@@ -214,17 +240,27 @@ def upgrade():
     sa.ForeignKeyConstraint(['project_id'], ['projects.projectId'], ),
     sa.PrimaryKeyConstraint('project_id', 'developer_id')
     )
+    op.create_table('assignment_remarks',
+    sa.Column('assignment_id', sa.Integer(), nullable=False),
+    sa.Column('remark_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['assignment_id'], ['assignments.id'], ),
+    sa.ForeignKeyConstraint(['remark_id'], ['remarks.id'], ),
+    sa.PrimaryKeyConstraint('assignment_id', 'remark_id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('assignment_remarks')
     op.drop_table('project_developers')
+    op.drop_table('payments')
     op.drop_table('assignments')
     op.drop_table('projects')
     op.drop_table('Team_developer_id')
     op.drop_table('tokens')
     op.drop_table('teams')
+    op.drop_table('remarks')
     op.drop_table('notifications')
     op.drop_table('logs')
     op.drop_table('biddings')

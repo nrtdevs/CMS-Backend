@@ -3,21 +3,25 @@ from datetime import datetime
 from app.models import Notification,db
 from flask import Blueprint, request, jsonify
 from .token import verifyJWTToken
-
-
 notification_bp = Blueprint('notification', __name__)
 
 def create_notification(notifyData): 
     try:
-        print("dayd",notifyData)
+        from app.database import socketio
+        
         new_notification = Notification(**notifyData) 
         db.session.add(new_notification)
         db.session.commit()
-        print("Success to Notify")
+
+        print("✅ Success to Notify")
+
+        # 🔥 Emit the notification event to all connected clients
+        socketio.emit('new_notification', notifyData)
+        
     except Exception as e:
-        print("errror",e)
+        print("❌ Error:", e)
         db.session.rollback()
-        print("Failed to Notify")
+        print("⚠️ Failed to Notify")
         
 @notification_bp.route('/<int:user_id>', methods=['GET'])
 @verifyJWTToken(['master_admin','user'])

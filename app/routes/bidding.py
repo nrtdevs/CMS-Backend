@@ -456,6 +456,7 @@ def update_bidding(bidId):
 
 def approve_bidding(file_path, file_name):
     
+
     data = request.form.to_dict()
     try:
         validated_data = auto_convert(data, approvedSchema)

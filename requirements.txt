@@ -10,7 +10,8 @@ PyJWT
 user-agents
 python-slugify
 flask_cors
-
+flask-socketio
+eventlet
 
 
 

@@ -7,6 +7,8 @@ from werkzeug.security import check_password_hash
 from .token import generateJWTToken
 from .notification import create_notification
 from .logs import addLogsActivity
+from ..helper.response import success_response,error_response
+
 app = Flask(__name__)
 secret_key = app.config['SECRET_KEY']
 
@@ -21,55 +23,64 @@ validator = Validator(loginSchema)
 
 @auth_bp.route ('/login',methods=['POST'])
 def login():
-    data = request.get_json()
-
-    if not validator.validate(data):
-        return jsonify({"errors": validator.errors}), 400
+    try:
+        data = request.get_json()
     
-    email = data.get('email')
-    password = data.get('password')
-    user = User.query.filter_by(email=email).first()
-    if  not user:
-        return jsonify({"error": "User not found"}), 401
-    if user.is_blocked==True:
-        return jsonify({"error": "You have been blocked"}), 401
+        if not validator.validate(data):
+            raise ValueError({"validation_errors": validator.errors})
+        
+        email = data.get('email')
+        password = data.get('password')
+        user = User.query.filter_by(email=email).first()
+        request.user=user
+        
+        if  not user:
+            raise ValueError({"error": "User not found"})
+        if user.is_blocked==True:
+            raise ValueError({"error": "You have been blocked"})
+        
+        if not check_password_hash(user.password, password):
+            raise ValueError({"error": "Invalid email or password"})
     
-    if not check_password_hash(user.password, password):
-        return jsonify({"error": "Invalid email or password"}), 401
-  
-    generatedToken=generateJWTToken(user.id,user.email,user.userType)
-    
-    new_notification = {
-        "user_id": user.id,
-        "message": "User logged in",
-        "module": "auth",
-        "subject":"Login"
-    }
-    create_notification(new_notification)
-    request.user=user
-    addLogsActivity(request,'Login','login successfully')
-    
-    role_data = {
-        "id": user.role.id,
-        "name": user.role.name,
-        "permissions": [
-            {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
-        ] if user.role.permissions else None
-    } if user.role else None
-      
-    return jsonify({
-        "message": "Login successful",
-        "accessToken":generatedToken,
-        "user": {
-            "id": user.id,
-            "firstName": user.firstName,
-            "lastName": user.lastName,
-            "email": user.email,
-            "roleDetails": role_data,
-            "mobileNo": user.mobileNo,
+        generatedToken=generateJWTToken(user.id,user.email,user.userType)
+        
+        new_notification = {
+            "user_id": user.id,
+            "message": "User logged in",
+            "module": "auth",
+            "subject":"Login"
         }
-    }), 200
-
+        
+        create_notification(new_notification)
+        
+        
+        addLogsActivity(request,'Login','login successfully')
+        
+        role_data = {
+            "id": user.role.id,
+            "name": user.role.name,
+            "permissions": [
+                {"id": perm.id, "slug": perm.slug} for perm in user.role.permissions
+            ] if user.role.permissions else None
+        } if user.role else None
+        
+        
+        data = {
+            "accessToken": generatedToken,
+            "user": {
+                "id": user.id,
+                "firstName": user.firstName,
+                "lastName": user.lastName,
+                "email": user.email,
+                "roleDetails": role_data,
+                "mobileNo": user.mobileNo,
+            }
+        }
+        return success_response(data,"Login successful")
+    except ValueError as e:
+        return error_response("Login failed", e.args[0], 401)
+    except Exception as e:
+        return error_response("An unexpected error occurred during login", {"error": str(e)}, 500)
 
 
 
