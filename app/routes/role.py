@@ -93,6 +93,7 @@ def get_roles_with_permissions():
                 'id': role.id,
                 'name': role.name,
                 'description': role.description,
+                'userType':role.userType,
                 'permissions': [
                     {
                         'id': permission.id,

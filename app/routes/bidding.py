@@ -291,7 +291,7 @@ def get_biddings():
                 "id": bidding.user.id,
                 "firstName": bidding.user.firstName,
                 "lastName": bidding.user.lastName,
-                "role": str(bidding.user.role),
+                "role": str(bidding.user.role.userType),
             } if bidding.user else None,
             "project": {
                 "projectId": bidding.project.projectId,

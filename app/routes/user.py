@@ -35,6 +35,7 @@ def create_user():
     if not validator.validate(data):
         addLogsActivity(request, 'Register', 'registration unsuccessfully')
         return jsonify({"errors": validator.errors}), 400
+    
 
     data['password'] = generate_password_hash(data['password'])
     try:

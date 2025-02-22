@@ -78,6 +78,7 @@ def login():
         }
         return success_response(data,"Login successful")
     except ValueError as e:
+        
         return error_response("Login failed", e.args[0], 401)
     except Exception as e:
         return error_response("An unexpected error occurred during login", {"error": str(e)}, 500)
