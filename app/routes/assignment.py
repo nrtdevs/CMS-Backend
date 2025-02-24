@@ -7,7 +7,9 @@ from cerberus import Validator
 from .logs import addLogsActivity
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
-from .token import verifyJWTToken  
+from .token import verifyJWTToken
+from ..helper.response import success_response, error_response
+  
 
 
 # Create a Blueprint
@@ -15,7 +17,7 @@ assig_bp = Blueprint('assig_routes', __name__)
 
 # Exception handler
 def handle_exception(e):
-    return jsonify({"message": "An error occurred", "error": str(e)}), 500
+    return error_response("An error occurred", str(e), 500)
 
 assignmentSchema = {
     'title': {'type': 'string', 'minlength': 2, 'maxlength': 100,'required': True,},
@@ -40,15 +42,9 @@ def get_assignment_list(projectId):
         
 
         if not project_data:
-            return jsonify({'error': 'Project not found'}), 404
+            return error_response("Invalid projectId", "project not found", 404)
 
-        # Include detailed project information
-        project_details = {
-            "projectId": project_data.projectId,
-            "projectName": project_data.bidding.projectName if project_data.bidding else None,
-            "status": project_data.status,
-        }
-
+        
         # Serialize assignments with related details
         assignments_data = []
         for assignment in project_data.assignments_list:
@@ -84,15 +80,10 @@ def get_assignment_list(projectId):
                     "email": assignment.assigner.email,
                 } if assignment.assigner else None
             })
-
-        return jsonify({
-            "success": True,
-            # "projectDetails": project_details,
-            "assignments": assignments_data
-        }), 200
+        return success_response(assignments_data, "Assignments fetched successfully", 200)
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        return error_response("Internal server error", str(e), 500)
 
 # Create a new assignment
 @assig_bp.route('/create', methods=['POST'])
@@ -101,7 +92,7 @@ def create_assignment():
     data = request.json
     if not validator.validate(data):
         addLogsActivity(request,'Assigment','Assigment unsuccessfully')
-        return jsonify({"errors": validator.errors}), 400
+        return error_response("assignment not found", str(validator.errors), 400)
  
     try:
         new_assignment = Assignment(
@@ -118,8 +109,8 @@ def create_assignment():
         db.session.add(new_assignment)
         db.session.commit()
         addLogsActivity(request,'Register','registration successfully')
+        return success_response(f"id: '{new_assignment.id}'", "Assignment created successfully", 201)
         
-        return jsonify({"message": "Assignment created successfully", "id": new_assignment.id}), 201
     except SQLAlchemyError as e:
         db.session.rollback()
         return handle_exception(e)
@@ -133,7 +124,7 @@ def get_assignment(id):
         assignment = Assignment.query.get(id)
         
         if not assignment:
-            return jsonify({"message": "Assignment not found"}), 404
+            return error_response("Assignment not found", str(e), 404)
         
         # Serialize the assignment with related details
         result = {
@@ -164,9 +155,9 @@ def get_assignment(id):
             } if assignment.assigner else None
         }
         
-        return jsonify({"success": True, "data": result}), 200
+        return success_response(result, "Assignments fetched successfully", 200)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return error_response("Failed to fetch assignments", str(e), 500)
 
 # Update an assignment
 @assig_bp.route('/<int:id>', methods=['PUT'])
@@ -176,25 +167,25 @@ def update_assignment(id):
 
     # Validate input data against the schema
     if not validator.validate(data):
-        return jsonify({"error": "Invalid data", "details": validator.errors}), 400
+        return error_response("Update failed", str(validator.errors), 400)
 
     try:
         # Fetch the assignment by ID
         assignment = Assignment.query.get(id)
         if not assignment:
-            return jsonify({"message": "Assignment not found"}), 404
+            return error_response("Assignment not found", str(e), 400)
 
         # Validate developerId if provided
         if data.get('developerId'):
             developer = User.query.get(data['developerId'])
             if not developer:
-                return jsonify({"error": "Invalid developerId"}), 400
+                return error_response("Invalid developerId", str(e), 400)
 
         # Validate testerId if provided
         if data.get('testerId'):
             tester = User.query.get(data['testerId'])
             if not tester:
-                return jsonify({"error": "Invalid testerId"}), 400
+                return error_response("Invalid testerId", str(e), 400)
 
         # Update fields only if present in the request data
         assignment.projectId = data.get('projectId', assignment.projectId)
@@ -211,43 +202,41 @@ def update_assignment(id):
             try:
                 assignment.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d')
             except ValueError:
-                return jsonify({"error": "Invalid due_date format. Expected YYYY-MM-DD."}), 400
+                return error_response("Invalid due_date format. Expected YYYY-MM-DD.", str(e), 400)
 
         assignment.updated_at = datetime.utcnow()
 
         # Commit changes to the database
         db.session.commit()
-
-        return jsonify({"message": "Assignment updated successfully"}), 200
+        return success_response({}, "Assignment updated successfully", 200)
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"error": "Database error occurred", "details": str(e)}), 500
+        return error_response("Database error occurred ", str(e), 500)
     except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+        return error_response("An unexpected error occurred", str(e), 500)
 
 @assig_bp.route('/developer/<int:developer_id>', methods=['PUT'])
 def update_assignment_by_developer(developer_id):
     data = request.get_json()  # Ensure JSON data is received
 
     if not data or 'assignmentId' not in data:
-        return jsonify({"error": "Assignment ID is required"}), 400
-
+        return error_response("Invalid assignment Id", "Assignment ID is required", 400)
     assignment_id = data.get('assignmentId')
 
     # Validate assignment_id is an integer
     if not isinstance(assignment_id, int):
-        return jsonify({"error": "Assignment ID must be a valid integer"}), 400
+        return error_response("Assignment Id must be valid integer", "Invalid assignment ID", 400)
 
     try:
         # Fetch the assignment based on the assignment_id
         assignment = Assignment.query.get(assignment_id)
         if not assignment:
-            return jsonify({"message": "Assignment not found"}), 404
+            return error_response("Assignment not found", str(e), 400)
 
         # Ensure the developer making the request matches the assignment's developer
         if developer_id != assignment.developerId:
-            return jsonify({"error": "Access denied. You are not authorized to update this assignment."}), 403
+            return error_response("You are not authorized to update this assignment.", "Invalid developer ID", 400)
 
         # Track changes
         updated_fields = {}
@@ -267,7 +256,7 @@ def update_assignment_by_developer(developer_id):
                 assignment.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d')
                 updated_fields['due_date'] = assignment.due_date.isoformat()
             except ValueError:
-                return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+                return error_response("Invalid date format. Use YYYY-MM-DD.", str(e), 400)
 
         # If any updates were made, update timestamp and commit
         if updated_fields:
@@ -300,14 +289,14 @@ def update_assignment_by_developer(developer_id):
             "created_at": assignment.created_at.isoformat(),
             "updated_at": assignment.updated_at.isoformat(),
         }
+        return success_response(update_assignment, "Assignment updated successfully by Developer!", 200)
 
-        return jsonify({"message": "Assignment updated successfully by Developer!", "assignment": updated_assignment}), 200
 
     except SQLAlchemyError as e:
         db.session.rollback()  # Roll back transaction on error
-        return jsonify({"error": "Database error occurred", "details": str(e)}), 500
+        return error_response("Database error occurred", str(e), 500)
     except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+        return error_response("An unexpected error occurred", str(e), 500)
 
 # Update an assignment by tester
 @assig_bp.route('/tester/<int:tester_id>', methods=['PUT'])
@@ -317,26 +306,26 @@ def update_assignment_by_tester(tester_id):
     try:
         # Ensure 'assignmentId' is provided in the data
         if 'assignmentId' not in data:
-            return jsonify({"error": "Assignment ID is required"}), 400
+            return error_response("Invalid assignmentId", "Assignment ID is required", 400)
 
         try:
             # Convert assignment_id from string to integer
             assignment_id = int(data['assignmentId'])
         except ValueError:
-            return jsonify({"error": "Assignment ID must be a valid integer"}), 400
+            return error_response("Invalid DataType", "Assignment Id must be a valid integer", 400)
 
         # Fetch the assignment based on the assignment_id
         assignment = Assignment.query.get(assignment_id)
         if not assignment:
-            return jsonify({"message": "Assignment not found"}), 404
+            return error_response("Not found", "Assignment not found in the list", 404)
 
         # Ensure the tester making the request matches the tester_id in the URL
         if tester_id != assignment.testerId:
-            return jsonify({"error": "Access denied. You are not authorized to update this assignment."}), 403
+            return error_response("Tester Id not found", "You are not authorized to update this assignment", 404)
 
         # Ensure the developer has updated the status first (status should not be "Pending")
         if assignment.status == "Pending":
-            return jsonify({"error": "Developer has not updated the assignment status yet. You cannot update it."}), 403
+            return error_response("Developer has not updated the assignment status yet.", "Tester cannot update it.", 400)
 
         # Update allowed fields from validated data
         updated = False
@@ -354,7 +343,7 @@ def update_assignment_by_tester(tester_id):
                 assignment.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d')
                 updated = True
             except ValueError:
-                return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+                return error_response("Invalid date format. Use YYYY-MM-DD.", str(e), 400)
 
         if updated:
             assignment.updated_at = datetime.utcnow()  # Update the timestamp
@@ -387,14 +376,14 @@ def update_assignment_by_tester(tester_id):
             "created_at": assignment.created_at.isoformat(),
             "updated_at": assignment.updated_at.isoformat(),
         }
+        return success_response(update_assignment, "Assignment updated successfully by Tester!", 200)
 
-        return jsonify({"message": "Assignment updated successfully by Tester!", "assignment": updated_assignment}), 200
 
     except SQLAlchemyError as e:
         db.session.rollback()  # Roll back the transaction in case of an error
-        return jsonify({"error": "Database error occurred", "details": str(e)}), 500
+        return error_response("Database error occurred", str(e), 500)
     except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+        return error_response("An unexpected error occurred", str(e), 500)
 
 # Delete an assignment
 @assig_bp.route('/<int:id>', methods=['DELETE'])
@@ -402,11 +391,11 @@ def delete_assignment(id):
     try:
         assignment = Assignment.query.get(id)
         if not assignment:
-            return jsonify({"message": "Assignment not found"}), 404
+            return error_response("Invalid assignment Id", "Assignment not found", 404)
 
         db.session.delete(assignment)
         db.session.commit()
-        return jsonify({"message": "Assignment deleted successfully"}), 200
+        return success_response({}, "Assignment deleted successfully", 200)
     except SQLAlchemyError as e:
         db.session.rollback()
         return handle_exception(e)

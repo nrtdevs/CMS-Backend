@@ -7,6 +7,8 @@ from datetime import datetime
 from .token import verifyJWTToken
 from app.models.user import User, db
 from app.models.project import Project, db
+from ..helper.response import success_response, error_response
+
 
 
 dashboard_bp = Blueprint('dashbord_routes', __name__)
@@ -60,4 +62,4 @@ def get_dashboard_data():
         }
     }
 
-    return jsonify(dashboard_data), 200
+    return success_response(dashboard_data, "", 200)

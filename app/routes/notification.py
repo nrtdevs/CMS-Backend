@@ -3,6 +3,8 @@ from datetime import datetime
 from app.models import Notification,db
 from flask import Blueprint, request, jsonify
 from .token import verifyJWTToken
+from ..helper.response import success_response, error_response
+
 notification_bp = Blueprint('notification', __name__)
 
 def create_notification(notifyData): 
@@ -55,11 +57,8 @@ def get_notifications_by_user_id(user_id):
 
     except Exception as e:
         # Handle errors
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
+        return error_response("Internal serever error", str(e), 500)
+            
 
 @notification_bp.route('/mark_as_read/<int:notification_id>', methods=['PUT'])
 @verifyJWTToken(['master_admin','user'])
@@ -69,10 +68,8 @@ def mark_notification_as_read(notification_id):
         notification = Notification.query.filter_by(id=notification_id).first()
 
         if notification is None:
-            return jsonify({
-                "status": "error",
-                "message": "Notification not found"
-            }), 404
+            return jsonify("Notification not found", str(e), 404)
+        
 
         # Update the 'seen' field to True
         notification.seen = True
@@ -82,19 +79,13 @@ def mark_notification_as_read(notification_id):
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({
-            "status": "success",
-            "message": "Notification marked as read"
-        }), 200
-
+        return jsonify({}, "Notification marked as read", 200)
+            
     except Exception as e:
         db.session.rollback()
         # Handle errors
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-        
+        return error_response("Database error", str(e), 500)
+            
 
 
 # Define the route for marking all notifications as read
@@ -106,10 +97,8 @@ def mark_all_notifications_as_read(user_id):
         notifications = Notification.query.filter_by(user_id=user_id, seen=False).all()
 
         if not notifications:
-            return jsonify({
-                "status": "success",
-                "message": "No unread notifications found"
-            }), 200
+            return success_response({},"No unread notifications found", 200)
+                
 
         # Update the 'seen' field to True for all notifications
         for notification in notifications:
@@ -120,15 +109,10 @@ def mark_all_notifications_as_read(user_id):
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({
-            "status": "success",
-            "message": f"All notifications for user {user_id} marked as read"
-        }), 200
+        return success_response({}, f"All notifications for user {user_id} marked as read", 200)
+            
 
     except Exception as e:
         # Handle errors
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
+        return error_response("Internal server error", str(e), 500)
+            

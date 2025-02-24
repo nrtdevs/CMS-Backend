@@ -11,6 +11,8 @@ from app.models.role import Role
 from app.models.team import Team
 from .file_uploader import handle_file_upload
 import os
+from ..helper.response import success_response, error_response
+
 
 
 biddings_bp = Blueprint('bidding_routes', __name__)
@@ -127,17 +129,17 @@ approve_validator = Validator(approvedSchema)
 def create_bidding():
     data = request.get_json()
     if not validator.validate(data):
-        return jsonify({"errors": validator.errors}), 400
+        return error_response("Bidding not found", str(e), 400)
     try:
         data['bidDate'] = datetime.strptime(data['bidDate'], '%Y-%m-%d').date()
     except ValueError:
-        return jsonify({"error": "Invalid bidDate format. Use YYYY-MM-DD."}), 400
+        return error_response("Invalid bidDate format. Use YYYY-MM-DD.", str(e), 400)
 
     
     userId = data.get('userId')
     user = User.query.filter_by(id=userId,status=True).first()
     if not user:
-        return jsonify({'error': 'User not found or not active'}), 404
+        return error_response("Not found user Id", 'User not found or not active', 404)
 
     try:
         bidding = Bidding(**data)
@@ -177,11 +179,12 @@ def create_bidding():
             "project_id":project_data,
             # "approvedBy": bidding.approvedBy,
         }
+        return success_response(bidding_data, "Bidding created successfully", 200)
     
-        return jsonify({"message": "Bidding created successfully", "data": bidding_data}), 200
+    
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An error occurred while creating the bidding.", "details": str(e)}), 500
+        return error_response("An error occurred while creating the bidding.", str(e), 500)
 
 
 # READ single Bidding
@@ -198,7 +201,7 @@ def get_bidding(bidId):
         .first()
     )
     if not bidding:
-        return jsonify({'error': 'Bidding not found'}), 404
+        return error_response("Not found", "Bidding not found", 404)
         # Serialize the user and project relationships
     user_data = {
         "id": bidding.user.id,
@@ -238,8 +241,8 @@ def get_bidding(bidId):
         "user_id": user_data,
         "project_id":project_data,
     }
+    return success_response(bidding_data, "Bidding fetched successfully", 200)
 
-    return jsonify({"message": "Bidding fetched successfully", "data": bidding_data}), 200
 
 # READ all Biddings with user and project populate for Master Admin
 @biddings_bp.route('/all', methods=['GET'])
@@ -302,16 +305,15 @@ def get_biddings():
         for bidding in paginated_biddings.items
     ]
 
-    return jsonify({
-        "message": "Biddings fetched successfully",
-        "data": biddings_list,
-        "pagination": {
+    return success_response(
+        biddings_list, "Biddings fetched successfully", 200,
+         {
             "page": paginated_biddings.page,
             "per_page": paginated_biddings.per_page,
             "total_pages": paginated_biddings.pages,
             "total_items": paginated_biddings.total,
         }
-    }), 200
+    )
 
 
 # @biddings_bp.route('/all', methods=['GET'])
@@ -419,16 +421,15 @@ def get_biddings_by_user(userId):
         for bidding in paginated_biddings.items
     ]
 
-    return jsonify({
-        "message": "Biddings fetched successfully",
-        "data": biddings_list,
-        "pagination": {
+    return jsonify(
+        biddings_list, "Biddings fetched successfully", 200,
+        {
             "page": paginated_biddings.page,
             "per_page": paginated_biddings.per_page,
             "total_pages": paginated_biddings.pages,
             "total_items": paginated_biddings.total,
         }
-    }), 200
+    )
 
 # UPDATE Bidding
 @biddings_bp.route('/bidding/<int:bidId>', methods=['PUT'])
@@ -438,7 +439,7 @@ def update_bidding(bidId):
     bidding = Bidding.query.filter_by(bidId=bidId).first()
 
     if not bidding:
-        return jsonify({'error': 'Bidding not found'}), 404
+        return error_response("Bidding not found", "Not found", 404)
 
     # Update fields
     for key, value in data.items():
@@ -446,8 +447,8 @@ def update_bidding(bidId):
             setattr(bidding, key, value)
 
     db.session.commit()
+    return success_response({}, "Bidding updated successfully", 200)
 
-    return jsonify({"message": "Bidding updated successfully"}), 200
 
 # Approve Bidding
 @biddings_bp.route('/approve', methods=['POST'])
@@ -461,7 +462,7 @@ def approve_bidding(file_path, file_name):
     try:
         validated_data = auto_convert(data, approvedSchema)
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response("Invalid request", str(e), 400)
 
 
 
@@ -484,20 +485,20 @@ def approve_bidding(file_path, file_name):
     
     
     if not bidding:
-        return jsonify({'error': 'Bidding not found'}), 404
+        return error_response('Bidding not found', str(e), 404)
     if bidding.status == 'approved':
-        return jsonify({'error': 'Bidding already approved'}), 400    
+        return error_response('Bidding already approved', str(e), 400)    
 
     if approvedById != bidding.userId and approvedById != 1:
-        return jsonify({'error': 'You are not authorized to approve this bidding'}), 403
+        return error_response('You are not authorized to approve this bidding', str(e), 404)
     
     if not techLead:
-        return jsonify({'error': 'TechLead not found'}), 404
+        return error_response('TechLead not found', str(e), 404)
         
     if team_id:
         team = Team.query.filter_by(teamId=team_id).first()
         if not team:
-            return jsonify({'error': f"Team with ID {team_id} not found"}), 404
+            return error_response({f"Team with ID {team_id} not found"}, str(e), 404)
         
         team_developer_ids = [developer.id for developer in team.developers]
         developer_ids = team_developer_ids
@@ -507,7 +508,7 @@ def approve_bidding(file_path, file_name):
         developers = User.query.filter(User.id.in_(developer_ids)).all()
         if len(developers) != len(developer_ids):
             missing_devs = [dev_id for dev_id in developer_ids if dev_id not in [dev.id for dev in team_developer_ids]]
-            return jsonify({'error': f"Some developer IDs are invalid: {missing_devs}"}), 404
+            return jsonify(f"Some developer IDs are invalid: {missing_devs}", str(e), 404)
         developerData = developers
 
     try:
@@ -537,11 +538,11 @@ def approve_bidding(file_path, file_name):
         for developer in developerData:
             project.developers.append(developer)  # Assuming many-to-many relationship 
         db.session.commit()
+        return success_response({file_name, file_path}, "Bidding approved successfully", 200)
 
-        return jsonify({"message": "Bidding approved successfully", "file_path": file_path, "file_name": file_name}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An error occurred while approving the bidding.", "details": str(e)}), 500
+        return error_response("An internal server error while approving the bidding.", str(e), 500)
 
 
 

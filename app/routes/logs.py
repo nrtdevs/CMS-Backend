@@ -4,6 +4,8 @@ from flask import Blueprint, request, jsonify
 from app.models.logs import Log
 from .token import verifyJWTToken
 from user_agents import parse
+from ..helper.response import success_response, error_response
+
 
 logs_bp = Blueprint("logs_routes", __name__)
 
@@ -79,14 +81,16 @@ def get_logs():
     
 
     # Return paginated data
-    return jsonify({
-        "logs": serialized_logs,
-        "total": logs.total,
-        "pages": logs.pages,
-        "current_page": logs.page,
-        "per_page": logs.per_page,
-        "has_next": logs.has_next,
-        "has_prev": logs.has_prev,
-    }), 200 
+    return success_response(
+        serialized_logs, "Fetched successfully paginated logs for master_admin", 200,
+        {
+            "total": logs.total,
+            "pages": logs.pages,
+            "current_page": logs.page,
+            "per_page": logs.per_page,
+            "has_next": logs.has_next,
+            "has_prev": logs.has_prev,
+        }
+        )
     
 
