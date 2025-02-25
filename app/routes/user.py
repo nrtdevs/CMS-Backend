@@ -41,7 +41,7 @@ def create_user():
     data = request.get_json()
     if not validator.validate(data):
         addLogsActivity(request, "Register", "registration unsuccessfully")
-        return error_response("User not found", str(validator.errors), 400)
+        return error_response("Input validation failed", str(validator.errors), 400)
 
     data["password"] = generate_password_hash(data["password"])
     try:
@@ -124,7 +124,7 @@ def get_users():
             },
         )
     except Exception as e:
-        
+
         return error_response("Failed to fetch users", str(e), 500)
 
 
