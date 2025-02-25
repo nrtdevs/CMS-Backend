@@ -121,7 +121,7 @@ def get_users():
                 "total_pages": paginated_users.pages,
                 "current_page": paginated_users.page,
                 "per_page": paginated_users.per_page,
-            },
+            }
         )
     except Exception as e:
 
@@ -135,7 +135,7 @@ def get_user(id):
     try:
         user = User.query.filter_by(id=id).first()
         if not user:
-            return error_response("User not found", str(e), 404)
+            return error_response("User not found", "User not found", 404)
 
         role_data = (
             {
