@@ -7,10 +7,8 @@ from app.models.project import Project
 from app.extensions import db
 from datetime import datetime
 from cerberus import Validator
-from ..helper.response import success_response, error_response
 
-
-payments_bp = Blueprint('payment_routes', __name__)
+payments_bp = Blueprint('payment_routes', _name_)
 
 payment_schema = {
     'amount': {'type': 'float', 'required': True},
@@ -35,12 +33,12 @@ def create_payment():
 
     # Validate the input data
     if not validator.validate(data):
-        return error_response("Invalid data", str(validator.errors), 400)
+        return jsonify({"errors": validator.errors}), 400
 
     # Check if project exists
     project = Project.query.filter_by(projectId=data['project_id']).first()
     if not project:
-        return error_response("Project_id not found", "Project_id not found", 404)
+        return jsonify({"error": "Project not found"}), 404
 
     try:
         payment = Payment(**data)
@@ -64,21 +62,20 @@ def create_payment():
             "refund_date": payment.refund_date,
             "project_id": payment.project_id
         }
-        return success_response(payment_data, "Payment created successfully", 201)
+        return jsonify({"message": "Payment created successfully", "data": payment_data}), 201
 
     except Exception as e:
         db.session.rollback()
-        return error_response("Integrity Error creating payment", str(e), 500)
+        return jsonify({"error": "Error creating payment", "details": str(e)}), 500
 
 # READ Single Payment
 
 
 @payments_bp.route('/<int:id>', methods=['GET'])
 def get_payment(id):
-    try:
-        payment = Payment.query.filter_by(id=id).first()
-        if not payment:
-            return error_response("Payment not found", "Payment_id not found", 404)
+    payment = Payment.query.filter_by(id=id).first()
+    if not payment:
+        return jsonify({"error": "Payment not found"}), 404
 
     payment_data = {
         "id": payment.id,
@@ -163,11 +160,8 @@ def get_payments():
                 "role": str(payment.project.user.role)  # Convert to string
             } if payment.project and payment.project.user else None
         }
-        for 
-        ]
-        return success_response(payment_data, "Payment fetched successfully", 200)
-    except Exception as e:
-        return error_response("Internal server error", str(e), 500)
+        for payment in paginated_payments.items
+    ]
 
     # Return response
     return jsonify({
