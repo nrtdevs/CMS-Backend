@@ -25,6 +25,9 @@ class Payment(db.Model):
     # Relationship
     project_id = db.Column(db.Integer, db.ForeignKey('projects.projectId'), nullable=False)  # Foreign key to the Project model
     project = db.relationship('Project', back_populates='payments')  # Relationship to the Project model
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Foreign key to the User model
+    user = db.relationship('User', back_populates='payments')  # Relationship to the User model
 
     __table_args__ = (
         db.UniqueConstraint('project_id', 'transaction_id', name='_project_transaction_uc'),

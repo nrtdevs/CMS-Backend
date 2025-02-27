@@ -41,3 +41,4 @@ class User(db.Model):
         back_populates='developers'
     )
     teams = db.relationship('Team', secondary=team_users, back_populates='developers')
+    payments = db.relationship('Payment', back_populates='user')
