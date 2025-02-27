@@ -247,6 +247,67 @@ def get_assignment(id):
         return error_response("Failed to fetch assignments", str(e), 500)
 
 
+#Get assignment list
+@assig_bp.route("/all", methods=["GET"])
+def get_list_assignments():
+    try:
+        # Implement pagination
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 10, type=int)
+        paginated_assignments = Assignment.query.paginate(page=page, per_page=per_page, error_out=False)
+
+        assigned_projects = [
+            {
+                "id": assignment.id,
+                "title": assignment.title,
+                "desc": assignment.desc,
+                "status": assignment.status,
+                "priority": assignment.priority,
+                "due_date": assignment.due_date.strftime("%Y-%m-%d") if assignment.due_date else None,
+                "created_at": assignment.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": assignment.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "project_details": (
+                    {
+                        "id": assignment.project.projectId,
+                        "name": assignment.project.bidding.projectName,
+                        "status": assignment.project.status,
+                    }
+                    if assignment.project else None
+                ),
+                "developer_details": (
+                    {
+                        "id": assignment.developer.id,
+                        "name": f"{assignment.developer.firstName} {assignment.developer.lastName}",
+                        "email": assignment.developer.email,
+                    }
+                    if assignment.developer else None
+                ),
+                "assigner_details": (
+                    {
+                        "id": assignment.assigner.id,
+                        "name": f"{assignment.assigner.firstName} {assignment.assigner.lastName}",
+                        "email": assignment.assigner.email,
+                    }
+                    if assignment.assigner else None
+                )
+            }
+            for assignment in paginated_assignments.items
+        ]
+
+        response_data = {
+            "assigned_projects": assigned_projects,
+        }
+
+        return success_response(response_data, "Assignments fetched successfully", 200,
+                                {
+                "total_pages": paginated_assignments.pages,
+                "current_page": paginated_assignments.page,
+                "per_page": per_page,
+                "total_records": paginated_assignments.total
+            })
+    except Exception as e:
+        return error_response("Failed to fetch assignments", str(e), 500)
+
 # Update an assignment
 @assig_bp.route("/<int:id>", methods=["PUT"])
 @verifyJWTToken(["master_admin", "user"])
@@ -403,7 +464,6 @@ def update_assignment_by_developer(developer_id):
 
 # Update an assignment by tester
 @assig_bp.route("/tester/<int:tester_id>", methods=["PUT"])
-
 def update_assignment_by_tester(tester_id):
     data = request.json  # Assuming data is being sent as JSON
 
@@ -499,7 +559,7 @@ def update_assignment_by_tester(tester_id):
             "updated_at": assignment.updated_at.isoformat(),
         }
         return success_response(
-            update_assignment, "Assignment updated successfully by Tester!", 200
+            updated_assignment, "Assignment updated successfully by Tester!", 200
         )
 
     except SQLAlchemyError as e:
@@ -525,3 +585,69 @@ def delete_assignment(id):
         return handle_exception(e)
     except Exception as e:
         return handle_exception(e)
+
+
+
+@assig_bp.route("/<int:user_id>", methods=["GET"])
+def check_assignment_details(user_id):
+    try:
+        # Fetch user by tickets_id
+        user = User.query.get(user_id)
+        if not user:
+            return error_response("User not found", "No user exists with this user ID", 404)
+
+        # Get the user's role
+    
+
+        assignments_query = None
+        role_name = user.role.name.lower()
+        
+        if role_name == "developer":
+            assignments_query = Assignment.query.filter_by(developerId=user_id)
+        elif role_name == "tester":
+            assignments_query = Assignment.query.filter_by(testerId=user_id)
+        elif role_name == "techlead":
+            assignments_query = Assignment.query.filter_by(teamleadId=user_id)
+        else:
+            return error_response("Invalid role", "Role is not recognized for this operation", 400)
+
+        # Implement pagination
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 10, type=int)
+        paginated_assignments = assignments_query.paginate(page=page, per_page=per_page, error_out=False)
+
+        assigned_projects = [
+            {
+                "id": assignment.id,
+                "title": assignment.title,
+                "desc": assignment.desc,
+                "status": assignment.status,
+                "priority": assignment.priority,
+                "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
+                "created_at": assignment.created_at.isoformat(),
+                "updated_at": assignment.updated_at.isoformat()
+            }
+            for assignment in paginated_assignments.items
+        ]
+
+        response_data = {
+            "user": {
+                "id": user.id,
+                "role": role_name
+            },
+            "assigned_projects": assigned_projects,
+        }
+
+        return success_response(response_data, "Assignments fetched successfully", 200,
+                                {
+                "total_pages": paginated_assignments.pages,
+                "current_page": paginated_assignments.page,
+                "per_page": per_page,
+                "total_records": paginated_assignments.total
+            })
+    
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return error_response("Database error occurred", str(e), 500)
+    except Exception as e:
+        return error_response("An unexpected error occurred", str(e), 500)
