@@ -47,51 +47,55 @@ validator = Validator(CreateRoleSchema)
 @roles_bp.route("/create", methods=["POST"])
 @verifyJWTToken(["master_admin", "super_admin"])
 def create_role():
-    data = request.get_json()
-    if not validator.validate(data):
-        return error_response("Input validation failed", str(validator.errors), 400)
-    # Extract data
-    name = data["name"]
-    userType = data["userType"]
-    description = data.get("description")
-    permissions = data.get("permissions", [])
+    try:
+        data = request.get_json()
+        if not validator.validate(data):
+            return error_response("Input validation failed", str(validator.errors), 400)
 
-    # Check if the role already exists
-    existing_role = Role.query.filter_by(name=name).first()
-    if existing_role:
-        return error_response(
-            f"Role '{name}' already exists.", str(validator.errors), 400
-        )  # Prevent duplicate role creation
+        name = data["name"]
+        userType = data["userType"]
+        description = data.get("description")
+        permissions = data.get("permissions", [])
 
-    # List to hold valid permissions
-    all_permissions = []  # Corrected variable name
-
-    # Loop through provided permissions and validate them
-    for perm_id in permissions:
-        permission = Permission.query.get(perm_id)
-        if permission:
-            all_permissions.append(permission)
-        else:
+        existing_role = Role.query.filter_by(name=name).first()
+        if existing_role:
             return error_response(
-                f"Invalid permission ID: {perm_id}", str(validator.errors), 400
-            )  # Prevent duplicate role creation0
+                f"Role '{name}' already exists.", f"Role '{name}' already exists.", 400
+            )
 
-    # Create the role object
-    role = Role(name=name, userType=userType, description=description)
+        # List to hold valid permissions
+        all_permissions = []
 
-    # Associate the valid permissions with the role
-    role.permissions.extend(all_permissions)
+        # Loop through provided permissions and validate them
+        for perm_id in permissions:
+            permission = Permission.query.get(perm_id)
+            if permission:
+                all_permissions.append(permission)
+            else:
+                return error_response(
+                    f"Invalid permission ID: {perm_id}",
+                    f"Invalid permission ID: {perm_id}",
+                    400,
+                )  # Prevent duplicate role creation0
 
-    # Create and save the role to the database
-    db.session.add(role)
-    db.session.commit()
+        # Create the role object
+        role = Role(name=name, userType=userType, description=description)
 
-    # Return a success message with role details
-    return success_response(
-        {"id": role.id, "name": role.name, "userType": role.userType},
-        "Role created successfully!",
-        200,
-    )
+        # Associate the valid permissions with the role
+        role.permissions.extend(all_permissions)
+
+        # Create and save the role to the database
+        db.session.add(role)
+        db.session.commit()
+
+        # Return a success message with role details
+        return success_response(
+            {"id": role.id, "name": role.name, "userType": role.userType},
+            "Role created successfully!",
+            200,
+        )
+    except Exception as e:
+        return error_response("Failed to create role", str(e), 500)
 
 
 @roles_bp.route("/list", methods=["GET"])
@@ -140,14 +144,13 @@ def get_role_by_id(role_id):
         if not isinstance(role_id, int):
 
             return error_response(
-                f"Invalid role_id format.", str(validator.errors), 400
+                f"Invalid role_id format.", f"Invalid role_id format.", 400
             )
         # Query role by id
         role = Role.query.get(role_id)
 
         if not role:
-
-            return error_response(f"Role not found", str(validator.errors), 404)
+            return error_response(f"Role not found", f"Role not found", 404)
 
         # Serialize the role and its associated permissions
         role_data = {
@@ -168,73 +171,72 @@ def get_role_by_id(role_id):
             "updated_at": role.updated_at,
         }
 
-        return jsonify({"success": True, "data": role_data}), 200
+        return success_response(role_data, "Here is the roles data", 200)
+
     except Exception as e:
         # Handle any errors
-        return jsonify({"success": False, "error": str(e)}), 500
+        return error_response("Something went wrong!", str(e), 500)
 
 
 @roles_bp.route("/update/<int:role_id>", methods=["PUT"])
 @verifyJWTToken(["master_admin", "super_admin", "user"])
 def update_role(role_id):
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    # Validate and extract new data
-    validator = Validator(UpdateRoleSchema)
-    if not validator.validate(data):
-        return jsonify({"errors": validator.errors}), 400
+        # Validate and extract new data
+        validator = Validator(UpdateRoleSchema)
+        if not validator.validate(data):
 
-    # Find the role to update
-    role = Role.query.get(role_id)
-    if not role:
-        return jsonify({"message": "Role not found."}), 404
+            return error_response("Input validation failed", str(validator.errors), 400)
 
-    # Update role data
-    role.name = data["name"]
-    role.description = data.get("description", role.description)
+        # Find the role to update
+        role = Role.query.get(role_id)
+        if not role:
+            return error_response("Role not found.", "Role not found.", 404)
 
-    # Get provided permissions from the request
-    permissions = data.get("permissions", [])
+        # Update role data
 
-    # List to hold valid permissions
-    all_permissions = []
+        role.name = data["name"]
+        role.description = data.get("description", role.description)
 
-    # Loop through provided permissions and validate them
-    for perm_id in permissions:
-        permission = Permission.query.get(perm_id)
-        if permission:
-            all_permissions.append(permission)  # Append valid permission to the list
-        else:
-            return (
-                jsonify({"message": f"Invalid permission ID: {perm_id}"}),
-                400,
-            )  # Return an error for invalid permission IDs
+        # Get provided permissions from the request
+        permissions = data.get("permissions", [])
 
-    # Update the permissions for the role
-    role.permissions = all_permissions  # Update the permissions list
+        # List to hold valid permissions
+        all_permissions = []
 
-    # Commit changes to the database
-    db.session.commit()
+        # Loop through provided permissions and validate them
+        for perm_id in permissions:
+            permission = Permission.query.get(perm_id)
+            if permission:
+                all_permissions.append(
+                    permission
+                )  # Append valid permission to the list
+            else:
+                return error_response(
+                    f"Invalid permission ID: {perm_id}",
+                    f"Invalid permission ID: {perm_id}",
+                    400,
+                )
 
-    # Return a success message with role details
-    return (
-        jsonify(
-            {
-                "message": "Role updated successfully!",
-                "role": {
-                    "id": role.id,
-                    "name": role.name,
-                    "description": role.description,
-                },
-            }
-        ),
-        200,
-    )
+        # Update the permissions for the role
+        role.permissions = all_permissions  # Update the permissions list
+
+        # Commit changes to the database
+        db.session.commit()
+
+        return success_response({}, "Role updated successfully!", 200)
+    except Exception as e:
+        # Handle any errors
+        return error_response("Failed to update role", str(e), 500)
 
 
 @roles_bp.route("/permissions", methods=["GET"])
 def get_permissions():
     try:
+        print("called api")
+
         # Query all roles from the database
         permissions = Permission.query.all()
 
