@@ -1,3 +1,5 @@
+from collections import defaultdict
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from flask import Blueprint, request, jsonify
 from app.models.payment import Payment, db
@@ -25,8 +27,6 @@ payment_schema = {
 validator = Validator(payment_schema)
 
 # CREATE Payment
-
-
 @payments_bp.route('/create', methods=['POST'])
 def create_payment():
     data = request.get_json()
@@ -97,28 +97,27 @@ def get_payment(id):
     return jsonify({"message": "Payment fetched successfully", "data": payment_data}), 200
 
 
+# Read All Payments
 @payments_bp.route('/all', methods=['GET'])
 def get_payments():
-    # Get the page, per_page, and filter parameters from the request
+    # Get query parameters
     page = request.args.get('page', default=1, type=int)
     per_page = request.args.get('per_page', default=10, type=int)
     search_query = request.args.get('search', default='', type=str)
     status_filter = request.args.get('status', default='', type=str)
     project_name = request.args.get('project_name', default=None, type=str)
 
-    # Start the query and join with the Project table based on project_id
+    # Query payments and join with projects
     query = Payment.query.join(Project, Payment.project_id == Project.projectId).options(
-        joinedload(Payment.project),  # Eager load the user relationship
-        joinedload(Payment.project)  # Eager load the project relationship
+        joinedload(Payment.project)  # Eager load project relationship
     )
 
-    # Apply project_name filter if a project_name is provided
+    # Apply project name filter
     if project_name:
-        # Perform a case-insensitive search for project names
         search_filter = f"%{project_name}%"
         query = query.filter(Project.projectName.ilike(search_filter))
 
-    # Apply search filter if a search term is provided (search across payer_name, transaction_id, etc.)
+    # Apply search filters
     if search_query:
         search_filter = f"%{search_query}%"
         query = query.filter(
@@ -127,15 +126,15 @@ def get_payments():
             (Payment.description.ilike(search_filter))
         )
 
-    # Apply status filter if a status is provided
+    # Apply status filter
     if status_filter:
         query = query.filter(Payment.status == status_filter)
 
-    # Apply pagination
+    # Paginate results
     paginated_payments = query.paginate(
         page=page, per_page=per_page, error_out=False)
 
-    # Prepare the list of payments to be returned
+    # Prepare the response data
     payments_list = [
         {
             "id": payment.id,
@@ -152,27 +151,21 @@ def get_payments():
             "receipt_url": payment.receipt_url,
             "refunded": payment.refunded,
             "refund_date": payment.refund_date,
-            "project_id": payment.project_id,
-            "project_name": payment.project.projectName,  # Add project name to the response
+            "project_id": payment.project.projectId if payment.project else None,
+            "project_name": payment.project.projectName if payment.project else None,
             "user": {
-                "id": payment.project.project_id,
-                "firstName": payment.project.first_name,
-                "lastName": payment.project.last_name,
-                "role": payment.project.role
-            } if payment.project else None  # Include project information if it exists
+                "id": payment.project.user.id,
+                "firstName": payment.project.user.firstName,
+                "lastName": payment.project.user.lastName,
+                "role": str(payment.project.user.role)  # Convert to string
+            } if payment.project and payment.project.user else None
         }
         for payment in paginated_payments.items
     ]
 
-    # Check if no payments were found
-    if not payments_list:
-        return jsonify({
-            "error": "No payments found. Please refine your search criteria."
-        }), 404
-
-    # Return the response with pagination info
+    # Return response
     return jsonify({
-        "message": "Payments fetched successfully",
+        "message": "Payments fetched successfully" if payments_list else "No payments found.",
         "data": payments_list,
         "pagination": {
             "page": paginated_payments.page,
@@ -180,38 +173,70 @@ def get_payments():
             "total_pages": paginated_payments.pages,
             "total_items": paginated_payments.total,
         }
+    }), 200 if payments_list else 404
+
+
+# Summary
+@payments_bp.route('/summary', methods=['GET'])
+def get_payment_summary():
+    """
+    Fetches all payments and provides:
+    - Total sum of payments.
+    - Number of times payments were made for each project.
+    - Total amount paid for each project.
+    - Supports filtering by date range, user ID, and project ID.
+    """
+
+    def parse_date(date_str):
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return None
+
+    start_date = parse_date(request.args.get('start_date'))
+    end_date = parse_date(request.args.get('end_date'))
+    user_id = request.args.get('user_id', type=int)
+    project_id = request.args.get('project_id', type=int)
+
+    if (start_date and not end_date) or (end_date and not start_date):
+        return jsonify({"error": "Both start_date and end_date must be provided."}), 400
+
+    query = db.session.query(Payment)
+
+    if start_date and end_date:
+        query = query.filter(Payment.payment_date.between(start_date, end_date))
+    if user_id:
+        query = query.filter(Payment.user_id == user_id)
+    if project_id:
+        query = query.filter(Payment.project_id == project_id)
+
+    all_payments = query.all()
+    total_sum = db.session.query(func.sum(Payment.amount)).scalar() or 0
+
+    project_payment_data = defaultdict(lambda: {"name": None, "count": 0, "total_payment": 0.0, "currency": None, "total_budget": 0.0})
+
+    for payment in all_payments:
+        if payment.project:
+            pid = payment.project_id
+            project_payment_data[pid]["name"] = payment.project.projectName
+            project_payment_data[pid]["count"] += 1
+            project_payment_data[pid]["total_payment"] += float(payment.amount)
+            project_payment_data[pid]["currency"] = payment.currency
+            project_payment_data[pid]["total_budget"] = payment.project.total_budget if hasattr(payment.project, 'total_budget') else 0.0
+
+    return jsonify({
+        "message": "Payments fetched successfully",
+        "total_sum": float(total_sum),
+        "total_payments": len(all_payments),
+        "payments_per_project": [
+            {
+                "project_id": pid,
+                "project_name": pdata["name"],
+                "payment_count": pdata["count"],
+                "total_payment": round(pdata["total_payment"], 2),
+                "currency": pdata["currency"],
+                "total_budget": round(pdata["total_budget"], 2)
+            }
+            for pid, pdata in project_payment_data.items()
+        ]
     }), 200
-
-
-# UPDATE Payment
-@payments_bp.route('/update/<int:id>', methods=['PUT'])
-def update_payment(id):
-    data = request.get_json()
-    payment = Payment.query.filter_by(id=id).first()
-
-    if not payment:
-        return jsonify({"error": "Payment not found"}), 404
-
-    # Update payment fields
-    for key, value in data.items():
-        if hasattr(payment, key):
-            setattr(payment, key, value)
-
-    db.session.commit()
-
-    return jsonify({"message": "Payment updated successfully"}), 200
-
-# DELETE Payment
-
-
-@payments_bp.route('/delete/<int:id>', methods=['DELETE'])
-def delete_payment(id):
-    payment = Payment.query.filter_by(id=id).first()
-
-    if not payment:
-        return jsonify({"error": "Payment not found"}), 404
-
-    db.session.delete(payment)
-    db.session.commit()
-
-    return jsonify({"message": "Payment deleted successfully"}), 200
