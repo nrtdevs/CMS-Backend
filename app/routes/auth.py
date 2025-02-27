@@ -83,11 +83,14 @@ def login():
                 "mobileNo": user.mobileNo,
             },
         }
-        return success_response(data, "Login successful")
+        return success_response(data,"Login successful", 200)
     except ValueError as e:
 
         return error_response("Login failed", e.args[0], 401)
     except Exception as e:
-        return error_response(
-            "An unexpected error occurred during login", {"error": str(e)}, 500
-        )
+ 
+        return error_response("An unexpected error occurred during login", str(e), 500)
+
+
+
+

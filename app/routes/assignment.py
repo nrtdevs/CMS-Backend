@@ -196,7 +196,7 @@ def get_assignment(id):
         assignment = Assignment.query.get(id)
 
         if not assignment:
-            return error_response("Assignment not found", str(e), 404)
+            return error_response("Assignment not found", "Assignment not found", 404)
 
         # Serialize the assignment with related details
         result = {
@@ -261,19 +261,19 @@ def update_assignment(id):
         # Fetch the assignment by ID
         assignment = Assignment.query.get(id)
         if not assignment:
-            return error_response("Assignment not found", str(e), 400)
+            return error_response("Assignment not found", "Assignment not found", 400)
 
         # Validate developerId if provided
         if data.get("developerId"):
             developer = User.query.get(data["developerId"])
             if not developer:
-                return error_response("Invalid developerId", str(e), 400)
+                return error_response("Invalid developerId", "Invalid developerId", 400)
 
         # Validate testerId if provided
         if data.get("testerId"):
             tester = User.query.get(data["testerId"])
             if not tester:
-                return error_response("Invalid testerId", str(e), 400)
+                return error_response("Invalid testerId", "Invalid testerId", 400)
 
         # Update fields only if present in the request data
         assignment.projectId = data.get("projectId", assignment.projectId)
@@ -325,7 +325,7 @@ def update_assignment_by_developer(developer_id):
         # Fetch the assignment based on the assignment_id
         assignment = Assignment.query.get(assignment_id)
         if not assignment:
-            return error_response("Assignment not found", str(e), 400)
+            return error_response("Assignment not found", "Assignment_id not found", 404)
 
         # Ensure the developer making the request matches the assignment's developer
         if developer_id != assignment.developerId:

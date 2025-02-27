@@ -50,11 +50,8 @@ def get_notifications_by_user_id(user_id):
             for n in notifications
         ]
 
-        return jsonify({
-            "status": "success",
-            "data": notification_list
-        }), 200
-
+        return success_response(notification_list, "Successfully feched notification", 200)
+            
     except Exception as e:
         # Handle errors
         return error_response("Internal serever error", str(e), 500)
@@ -68,7 +65,7 @@ def mark_notification_as_read(notification_id):
         notification = Notification.query.filter_by(id=notification_id).first()
 
         if notification is None:
-            return jsonify("Notification not found", str(e), 404)
+            return error_response("Notification not found", "Notification not found", 404)
         
 
         # Update the 'seen' field to True
@@ -79,7 +76,7 @@ def mark_notification_as_read(notification_id):
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({}, "Notification marked as read", 200)
+        return success_response({}, "Notification marked as read", 200)
             
     except Exception as e:
         db.session.rollback()
