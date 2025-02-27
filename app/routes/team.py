@@ -108,24 +108,37 @@ def update_team(team_id):
         return error_response("Internal server error", str(e), 500)
 # Get all teams
 @teams_bp.route('/get_all', methods=['GET'])
-@verifyJWTToken(['master_admin','user'])
 def get_all_teams():
     try:
-        teams = Team.query.all()
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 10, type=int)
+        paginated_teams = Team.query.paginate(page=page, per_page=per_page, error_out=False)
+
         teams_list = [
-                {
-                    "teamId": team.teamId,
-                    "teamName": team.teamName,
-                    "teamLeadId": team.teamLeadId,
-                    "status": team.status,
-                    "description": team.description,
-                    "techStack": team.techStack,
-                    "createdById": team.createdById,
-                    "developer_ids": [dev.id for dev in team.developers]
-                }
-                for team in teams
-            ]
-        return success_response(teams_list, "All Teams Fetched successfully", 200)
+            {
+                "teamId": team.teamId,
+                "teamName": team.teamName,
+                "teamLeadId": team.teamLeadId,
+                "status": team.status,
+                "description": team.description,
+                "techStack": team.techStack,
+                "createdById": team.createdById,
+                "developer_ids": [dev.id for dev in team.developers]
+            }
+            for team in paginated_teams.items
+        ]
+
+        response_data = {
+            "teams": teams_list,
+        }
+
+        return success_response(response_data, "All Teams Fetched successfully", 200,
+                                {
+                "total_pages": paginated_teams.pages,
+                "current_page": paginated_teams.page,
+                "per_page": per_page,
+                "total_records": paginated_teams.total
+            })
     except Exception as e:
         return error_response("Internal server error", str(e), 500)
 
